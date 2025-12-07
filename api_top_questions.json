@@ -12,7 +12,7 @@
       "link" : "https://stackoverflow.com/users/87234/gmannickg"
     },
     "is_answered" : true,
-    "view_count" : 1959334,
+    "view_count" : 1959341,
     "protected_date" : 1399067470,
     "accepted_answer_id" : 11227902,
     "answer_count" : 25,
@@ -37,7 +37,7 @@
       "link" : "https://stackoverflow.com/users/4315/user4315"
     },
     "is_answered" : true,
-    "view_count" : 2825112,
+    "view_count" : 2825121,
     "protected_date" : 1308938923,
     "answer_count" : 87,
     "community_owned_date" : 1347646975,
@@ -64,7 +64,7 @@
       "link" : "https://stackoverflow.com/users/342235/freewind"
     },
     "is_answered" : true,
-    "view_count" : 820290,
+    "view_count" : 820291,
     "protected_date" : 1433866025,
     "accepted_answer_id" : 6841479,
     "answer_count" : 11,
@@ -90,7 +90,7 @@
       "link" : "https://stackoverflow.com/users/16616/johnny-maelstrom"
     },
     "is_answered" : true,
-    "view_count" : 2769233,
+    "view_count" : 2769236,
     "protected_date" : 1370840953,
     "accepted_answer_id" : 309448,
     "answer_count" : 67,
@@ -142,7 +142,7 @@
       "link" : "https://stackoverflow.com/users/4316/dmanxiii"
     },
     "is_answered" : true,
-    "view_count" : 1781549,
+    "view_count" : 1781550,
     "protected_date" : 1331925209,
     "accepted_answer_id" : 40878,
     "answer_count" : 35,
@@ -168,7 +168,7 @@
       "link" : "https://stackoverflow.com/users/42155/user42155"
     },
     "is_answered" : true,
-    "view_count" : 5336904,
+    "view_count" : 5336915,
     "protected_date" : 1296764202,
     "answer_count" : 59,
     "score" : 4130,
@@ -193,7 +193,7 @@
       "link" : "https://stackoverflow.com/users/939/ron-tuffin"
     },
     "is_answered" : true,
-    "view_count" : 1895077,
+    "view_count" : 1895080,
     "protected_date" : 1479928258,
     "accepted_answer_id" : 157950,
     "answer_count" : 42,
@@ -219,7 +219,7 @@
       "link" : "https://stackoverflow.com/users/542091/ovidiu-latcu"
     },
     "is_answered" : true,
-    "view_count" : 377653,
+    "view_count" : 377654,
     "protected_date" : 1353543106,
     "accepted_answer_id" : 13375461,
     "answer_count" : 12,
@@ -245,7 +245,7 @@
       "link" : "https://stackoverflow.com/users/4807/imack"
     },
     "is_answered" : true,
-    "view_count" : 3569322,
+    "view_count" : 3569328,
     "protected_date" : 1365576855,
     "accepted_answer_id" : 46908,
     "answer_count" : 46,
@@ -261,5 +261,5 @@
   } ],
   "has_more" : true,
   "quota_max" : 10000,
-  "quota_remaining" : 9985
+  "quota_remaining" : 9957
 }
