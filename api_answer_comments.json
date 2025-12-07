@@ -1,0 +1,606 @@
+{
+  "items" : [ {
+    "owner" : {
+      "account_id" : 44844774,
+      "reputation" : 1,
+      "user_id" : 31965272,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/M6QfZSHp.jpg?s=256",
+      "display_name" : "Harjeet M",
+      "link" : "https://stackoverflow.com/users/31965272/harjeet-m"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1764695182,
+    "post_id" : 271874,
+    "comment_id" : 140883758,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "You avoid null checks by not returning null in the first place — use Optional or default (null-object) values instead.  If something must never be null, validate it once at the start using Objects.requireNonNull().  This keeps nulls from spreading everywhere, so you don’t have to write if (x != null) all over your code."
+  }, {
+    "owner" : {
+      "account_id" : 6009045,
+      "reputation" : 14809,
+      "user_id" : 4720018,
+      "user_type" : "registered",
+      "accept_rate" : 75,
+      "profile_image" : "https://i.sstatic.net/GC3h8.png?s=256",
+      "display_name" : "djvg",
+      "link" : "https://stackoverflow.com/users/4720018/djvg"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1762259663,
+    "post_id" : 158269,
+    "comment_id" : 140835639,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "related: <a href=\"https://stackoverflow.com/q/57921251/4720018\">stackoverflow.com/q/57921251/4720018</a>"
+  }, {
+    "owner" : {
+      "account_id" : 17201994,
+      "reputation" : 448,
+      "user_id" : 29046053,
+      "user_type" : "registered",
+      "profile_image" : "https://lh4.googleusercontent.com/-MOC4Vt0c__w/AAAAAAAAAAI/AAAAAAAAAAA/ACHi3rf8MQWSf6wFQ9vE0GSA1yvKPSXUSg/s256-rj/photo.jpg",
+      "display_name" : "Coarse Rosinflower",
+      "link" : "https://stackoverflow.com/users/29046053/coarse-rosinflower"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1756384264,
+    "post_id" : 363692,
+    "comment_id" : 140698520,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@user42155 Remember to mark an answer as correct if it was!"
+  }, {
+    "owner" : {
+      "account_id" : 11712763,
+      "reputation" : 889,
+      "user_id" : 9437799,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/d1cc59d70a60f0fd154bbf9a2c3d4087?s=256&d=identicon&r=PG",
+      "display_name" : "Sam Ginrich",
+      "link" : "https://stackoverflow.com/users/9437799/sam-ginrich"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1755016351,
+    "post_id" : 73021,
+    "comment_id" : 140660725,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Scott Stanchfield nice to meet you. Did not expect your comment."
+  }, {
+    "owner" : {
+      "account_id" : 7257,
+      "reputation" : 30740,
+      "user_id" : 12541,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/Yk2vr.jpg?s=256",
+      "display_name" : "Scott Stanchfield",
+      "link" : "https://stackoverflow.com/users/12541/scott-stanchfield"
+    },
+    "reply_to_user" : {
+      "account_id" : 11712763,
+      "reputation" : 889,
+      "user_id" : 9437799,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/d1cc59d70a60f0fd154bbf9a2c3d4087?s=256&d=identicon&r=PG",
+      "display_name" : "Sam Ginrich",
+      "link" : "https://stackoverflow.com/users/9437799/sam-ginrich"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1754960584,
+    "post_id" : 73021,
+    "comment_id" : 140658797,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@SamGinrich I&#39;m the author of the blog post that the OP referred to, and my post is clarifying the facts. I don&#39;t track &quot;likes&quot; on my site; my post has been there since 2001. This misunderstanding of how Java works has been around forever and needs questions/answers like this on SO."
+  }, {
+    "owner" : {
+      "account_id" : 20426516,
+      "reputation" : 59,
+      "user_id" : 14986403,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/7c06e3a61b66119ccad5c4f186668828?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "liampace",
+      "link" : "https://stackoverflow.com/users/14986403/liampace"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1751728407,
+    "post_id" : 271874,
+    "comment_id" : 140567013,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Something to add to this answer is that if null is a valid return value they can use the <code>Optional</code> to wrap the value and add handling logic there (assuming Java 1.8+)"
+  }, {
+    "owner" : {
+      "account_id" : 25660167,
+      "reputation" : 99,
+      "user_id" : 19426256,
+      "user_type" : "registered",
+      "profile_image" : "https://lh3.googleusercontent.com/a/AATXAJyVp-xl9fDmQl0KdjXKmedQKNC5I8NAlS9FVqM6=k-s256",
+      "display_name" : "Drishti Jain",
+      "link" : "https://stackoverflow.com/users/19426256/drishti-jain"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1748247346,
+    "post_id" : 157950,
+    "comment_id" : 140458786,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Am I understanding this correctly? Because when I use &quot;Arrays.asList(arrayOFSomeDataType) I get a list that has its first element as the input arrays itself. It does not result in a list which is in format [element1, element2, element3] etc."
+  }, {
+    "owner" : {
+      "account_id" : 18008594,
+      "reputation" : 59,
+      "user_id" : 13088810,
+      "user_type" : "registered",
+      "profile_image" : "https://lh4.googleusercontent.com/-RiBzJPmbKjc/AAAAAAAAAAI/AAAAAAAAAAA/AKF05nAyrlaSwA-E6BYoXdmAAYYhowBDug/s256-rj/photo.jpg",
+      "display_name" : "Jeff W",
+      "link" : "https://stackoverflow.com/users/13088810/jeff-w"
+    },
+    "reply_to_user" : {
+      "account_id" : 28410,
+      "reputation" : 22905,
+      "user_id" : 75863,
+      "user_type" : "registered",
+      "accept_rate" : 76,
+      "profile_image" : "https://www.gravatar.com/avatar/36e4f1786bbe6ec3169a147bf54f91c1?s=256&d=identicon&r=PG",
+      "display_name" : "jjujuma",
+      "link" : "https://stackoverflow.com/users/75863/jjujuma"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1745226138,
+    "post_id" : 46908,
+    "comment_id" : 140353898,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@jjujuma You can, but if you&#39;re going to import Map.Entry directly, instead of Map, you can go &#39;Entry&lt;String, String&gt; entry&#39; instead of &#39;Map.Entry&lt;String, String&gt; entry&#39;, for added conciseness."
+  }, {
+    "owner" : {
+      "account_id" : 2309641,
+      "reputation" : 5070,
+      "user_id" : 2028066,
+      "user_type" : "registered",
+      "accept_rate" : 52,
+      "profile_image" : "https://i.sstatic.net/U9hAY.jpg?s=256",
+      "display_name" : "MiguelMunoz",
+      "link" : "https://stackoverflow.com/users/2028066/miguelmunoz"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1743727326,
+    "post_id" : 35446009,
+    "comment_id" : 140297310,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "For the method that risk turning \\r\\n into \\n, this may be avoided by using <code>System.getProperty(&quot;line.separator&quot;)</code> instead of <code>&quot;\\n&quot;</code>. (This String value should be read from a static constant instead of making the call each time you read a line.)"
+  }, {
+    "owner" : {
+      "account_id" : 2309641,
+      "reputation" : 5070,
+      "user_id" : 2028066,
+      "user_type" : "registered",
+      "accept_rate" : 52,
+      "profile_image" : "https://i.sstatic.net/U9hAY.jpg?s=256",
+      "display_name" : "MiguelMunoz",
+      "link" : "https://stackoverflow.com/users/2028066/miguelmunoz"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1743726947,
+    "post_id" : 35446009,
+    "comment_id" : 140297296,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Number 5. I would never use parallel on this kind of operation. It risks reading the characters in the wrong order."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377250,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 451370,
+      "reputation" : 2988,
+      "user_id" : 847235,
+      "user_type" : "registered",
+      "accept_rate" : 92,
+      "profile_image" : "https://www.gravatar.com/avatar/644382c3f7d5191d16cf61700d80db93?s=256&d=identicon&r=PG",
+      "display_name" : "Intrepidis",
+      "link" : "https://stackoverflow.com/users/847235/intrepidis"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1739985436,
+    "post_id" : 11227902,
+    "comment_id" : 140120650,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Intrepidis: Also, the ability to speculate is necessary to not stall on every possibly-faulting instruction, like loads, stores, integer division, FP instructions if exceptions are unmasked, etc.  And most branches <i>are</i> predictable, e.g. loops are very common.  So it of course makes sense for out-of-order exec CPUs to execute speculatively."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377250,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 451370,
+      "reputation" : 2988,
+      "user_id" : 847235,
+      "user_type" : "registered",
+      "accept_rate" : 92,
+      "profile_image" : "https://www.gravatar.com/avatar/644382c3f7d5191d16cf61700d80db93?s=256&d=identicon&r=PG",
+      "display_name" : "Intrepidis",
+      "link" : "https://stackoverflow.com/users/847235/intrepidis"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1739985300,
+    "post_id" : 11227902,
+    "comment_id" : 140120632,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Intrepidis: On an OoO exec CPU (unlike an in-order pipeline) yes, branch recovery might be a few cycles slower than if the CPU had stalled on every branch until it executes.  In such a design, the CPU still has to wait for I-cache latency and the length of the pipeline up to the exec stage before useful work is getting done again.  There are cases like binary search where speculative exec is a useful hardware prefetch at least half the time, and others where the same memory is accessed after a branch so a load can be in flight during branch recovery."
+  }, {
+    "owner" : {
+      "account_id" : 451370,
+      "reputation" : 2988,
+      "user_id" : 847235,
+      "user_type" : "registered",
+      "accept_rate" : 92,
+      "profile_image" : "https://www.gravatar.com/avatar/644382c3f7d5191d16cf61700d80db93?s=256&d=identicon&r=PG",
+      "display_name" : "Intrepidis",
+      "link" : "https://stackoverflow.com/users/847235/intrepidis"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1739972987,
+    "post_id" : 11227902,
+    "comment_id" : 140119587,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "The answer says that &quot;when faced with unpredictable branches with no recognizable patterns, branch predictors are virtually useless&quot;; but aren&#39;t they worse than useless? Because if the prediction is incorrect, it has to flush the pipeline, which can lead to wasted cycles and reduced performance."
+  }, {
+    "owner" : {
+      "account_id" : 1832955,
+      "reputation" : 613,
+      "user_id" : 1679112,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/RRaA1.jpg?s=256",
+      "display_name" : "evaldeslacasa",
+      "link" : "https://stackoverflow.com/users/1679112/evaldeslacasa"
+    },
+    "edited" : false,
+    "score" : 2,
+    "creation_date" : 1733831977,
+    "post_id" : 12429953,
+    "comment_id" : 139779897,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "This is the answer that made me clarify the question thanks to visually following the diagrams."
+  }, {
+    "owner" : {
+      "account_id" : 19147767,
+      "reputation" : 142,
+      "user_id" : 13986340,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/89f242f32a44c937c6cb929c0df9dab2?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "ed__",
+      "link" : "https://stackoverflow.com/users/13986340/ed"
+    },
+    "edited" : false,
+    "score" : 2,
+    "creation_date" : 1731512301,
+    "post_id" : 11237235,
+    "comment_id" : 139632555,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "I think calling the ternary operator &quot;branchless&quot; is the wrong idea here. You are relying on a language optimization feature which just so happens to be used in one of the two functions, even when they are semantically equivalent."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377250,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 3941049,
+      "reputation" : 53039,
+      "user_id" : 3255455,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/df163b8a55fa3258785cca0bfe5f224c?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "gnasher729",
+      "link" : "https://stackoverflow.com/users/3255455/gnasher729"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1723495829,
+    "post_id" : 11227902,
+    "comment_id" : 139043617,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@gnasher729: It&#39;s up to the compiler whether the <code>if</code> or the <code>else</code> is the fast path (no taken branches) when laying out the asm.  (Or whether each way has one taken branch, one with a conditional branch over the first block, the other with an unconditional jump at the end of the first block over the second block, if neither block is &quot;out of line&quot; after the <code>ret</code>.)  Compilers like GCC have heuristics to guess which side of an if/else will be more common, if they don&#39;t have profiling data, and there&#39;s <code>__builtin_expect</code> in the source."
+  }, {
+    "owner" : {
+      "account_id" : 3941049,
+      "reputation" : 53039,
+      "user_id" : 3255455,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/df163b8a55fa3258785cca0bfe5f224c?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "gnasher729",
+      "link" : "https://stackoverflow.com/users/3255455/gnasher729"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1723492520,
+    "post_id" : 11227902,
+    "comment_id" : 139043262,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Hints: On many processors, taken branches take longer than non-taken branches. So if you have an if/else, you have a choice which code follows the conditional branch and you pick it so you have more non-taken branches according to the hint. You can do the same with a plain if."
+  }, {
+    "owner" : {
+      "account_id" : 32678439,
+      "reputation" : 82,
+      "user_id" : 25397671,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/7oX3Kyhe.jpg?s=256",
+      "display_name" : "Karol",
+      "link" : "https://stackoverflow.com/users/25397671/karol"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1719709977,
+    "post_id" : 14889969,
+    "comment_id" : 138732144,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Sorry, Can you explain more?"
+  }, {
+    "owner" : {
+      "account_id" : 27716892,
+      "reputation" : 139,
+      "user_id" : 21158396,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/JU6ew.png?s=256",
+      "display_name" : "didlidoo",
+      "link" : "https://stackoverflow.com/users/21158396/didlidoo"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1717389134,
+    "post_id" : 11227877,
+    "comment_id" : 138513650,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Pretty short answer for such a long question."
+  }, {
+    "owner" : {
+      "account_id" : 1628184,
+      "reputation" : 10230,
+      "user_id" : 1503237,
+      "user_type" : "registered",
+      "accept_rate" : 67,
+      "profile_image" : "https://i.sstatic.net/piBNb.jpg?s=256",
+      "display_name" : "Matthias Ronge",
+      "link" : "https://stackoverflow.com/users/1503237/matthias-ronge"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1716364079,
+    "post_id" : 350723,
+    "comment_id" : 138419450,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "If you want to handle byte-order marks (BOM), use <code>BOMInputStream bis = new BOMInputStream(Files.newInputStream(path)); String data = bis.hasBOM() ? IOUtils.toString(bis, bis.getBOMCharsetName()) : IOUtils.toString(bis);</code>"
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377250,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 27566922,
+      "reputation" : 862,
+      "user_id" : 21038936,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/wtPcMJY8.jpg?s=256",
+      "display_name" : "Mippy",
+      "link" : "https://stackoverflow.com/users/21038936/mippy"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1715486533,
+    "post_id" : 11227902,
+    "comment_id" : 138333512,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Mippy: Praveen&#39;s comment doesn&#39;t apply to all CPUs.  On some, in the best case, a correctly predicted branch (especially if not-taken) doesn&#39;t create any bubbles in the pipeline.  Of course, if you want to process more than 1 element per instruction (with SIMD) you need branchless code, other than the loop branch of course.  See the clang Q&amp;A linked in the update section.  High-performance CPU hardware needs to predict every branch, even unconditional ones, so it can be fetching from the right place before the branch is even decoded.  (<a href=\"//stackoverflow.com/q/38811901\">Slow jmp-instruction</a>)"
+  }, {
+    "owner" : {
+      "account_id" : 27566922,
+      "reputation" : 862,
+      "user_id" : 21038936,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/wtPcMJY8.jpg?s=256",
+      "display_name" : "Mippy",
+      "link" : "https://stackoverflow.com/users/21038936/mippy"
+    },
+    "reply_to_user" : {
+      "account_id" : 29358163,
+      "reputation" : 49,
+      "user_id" : 22493563,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/eYFbU.png?s=256",
+      "display_name" : "Praveen Kumar",
+      "link" : "https://stackoverflow.com/users/22493563/praveen-kumar"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1715296413,
+    "post_id" : 11227902,
+    "comment_id" : 138317843,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@PraveenKumar Where did you find that info, just curious?"
+  }, {
+    "owner" : {
+      "account_id" : 29358163,
+      "reputation" : 49,
+      "user_id" : 22493563,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/eYFbU.png?s=256",
+      "display_name" : "Praveen Kumar",
+      "link" : "https://stackoverflow.com/users/22493563/praveen-kumar"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1714391850,
+    "post_id" : 11227902,
+    "comment_id" : 138221291,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Prediction requires processing. Doesn’t it slow down the hardware since the coding is same for all."
+  }, {
+    "owner" : {
+      "account_id" : 11712763,
+      "reputation" : 889,
+      "user_id" : 9437799,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/d1cc59d70a60f0fd154bbf9a2c3d4087?s=256&d=identicon&r=PG",
+      "display_name" : "Sam Ginrich",
+      "link" : "https://stackoverflow.com/users/9437799/sam-ginrich"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1710062040,
+    "post_id" : 73021,
+    "comment_id" : 137749341,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@admins &quot;I always thought...&quot; &quot;Oh, you referenced my article [and accidently I got some thousand likes]&quot;.  Manipulative language and claiming (not discussing!) on ground of a language that does even consider dereferention is totally unserious. This topic should vanish from Stackoverflow"
+  }, {
+    "owner" : {
+      "account_id" : 2819099,
+      "reputation" : 994,
+      "user_id" : 2423283,
+      "user_type" : "registered",
+      "accept_rate" : 86,
+      "profile_image" : "https://www.gravatar.com/avatar/75057ee1361d4d3d169413ed4d8e88f5?s=256&d=identicon&r=PG",
+      "display_name" : "NateW",
+      "link" : "https://stackoverflow.com/users/2423283/natew"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1704484027,
+    "post_id" : 35446009,
+    "comment_id" : 137100759,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "On number 5 does using parallel actually have a performance benefit over just using a sequential stream? I would guess that since the data has to be read in order anyway there wouldn&#39;t be any benefit"
+  }, {
+    "owner" : {
+      "account_id" : 6291,
+      "reputation" : 11822,
+      "user_id" : 10522,
+      "user_type" : "registered",
+      "accept_rate" : 78,
+      "profile_image" : "https://www.gravatar.com/avatar/8396048b39279996e7ee6c1acdac2bf7?s=256&d=identicon&r=PG",
+      "display_name" : "Berlin Brown",
+      "link" : "https://stackoverflow.com/users/10522/berlin-brown"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1704380084,
+    "post_id" : 35446009,
+    "comment_id" : 137086385,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "This answer is amazing.  How did you build the stats, the avgt, higher time is worse?"
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377250,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 16085630,
+      "reputation" : 531,
+      "user_id" : 11631959,
+      "user_type" : "registered",
+      "profile_image" : "https://lh3.googleusercontent.com/-T8NkNQvhOyE/AAAAAAAAAAI/AAAAAAAAB-0/9JoUPhYxXIw/s256-rj/photo.jpg",
+      "display_name" : "AvidCoder",
+      "link" : "https://stackoverflow.com/users/11631959/avidcoder"
+    },
+    "edited" : false,
+    "score" : 6,
+    "creation_date" : 1704231428,
+    "post_id" : 11303693,
+    "comment_id" : 137067847,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@NameSurname - your edit didn&#39;t actually change the syntax highlighting; Java/C++ syntax highlighting was already the default because of the tags on the question, and Java vs. C++ highlighting don&#39;t differ in how they highlight this so it didn&#39;t matter which it picked.  Please don&#39;t clutter up the edit queue (or spend your time on) edits that don&#39;t actually change anything.  Also, in some of your other recent edit suggestions, don&#39;t use <code>code formatting</code> for names of programs, only things that are actual shell commands or source-code names of functions or variables. It&#39;s bad for screen readers"
+  }, {
+    "owner" : {
+      "account_id" : 4646767,
+      "reputation" : 19479,
+      "user_id" : 3764804,
+      "user_type" : "registered",
+      "accept_rate" : 59,
+      "profile_image" : "https://i.sstatic.net/fZQON.png?s=256",
+      "display_name" : "BullyWiiPlaza",
+      "link" : "https://stackoverflow.com/users/3764804/bullywiiplaza"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1703807570,
+    "post_id" : 11227902,
+    "comment_id" : 137034101,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "In 2023, using VS 2022 x64 release, the runtime difference is hardly existent when sorting and not sorting using the example code. Maybe the compiler got smarter. Still, when refactoring the inner loop into using a foreach loop, the branch prediction issues arise again. That is quite surprising."
+  }, {
+    "owner" : {
+      "account_id" : 4426660,
+      "reputation" : 1039,
+      "user_id" : 3604955,
+      "user_type" : "registered",
+      "accept_rate" : 67,
+      "profile_image" : "https://i.sstatic.net/oMAdr.jpg?s=256",
+      "display_name" : "kaiser",
+      "link" : "https://stackoverflow.com/users/3604955/kaiser"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1698213593,
+    "post_id" : 35446009,
+    "comment_id" : 136375000,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "One of the best answers to a question on complete stack overflow!"
+  }, {
+    "owner" : {
+      "account_id" : 1119690,
+      "reputation" : 23250,
+      "user_id" : 1108305,
+      "user_type" : "registered",
+      "accept_rate" : 47,
+      "profile_image" : "https://www.gravatar.com/avatar/4c16849c5f9444a685f62cdc2a15c3ac?s=256&d=identicon&r=PG",
+      "display_name" : "M. Justin",
+      "link" : "https://stackoverflow.com/users/1108305/m-justin"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1694460708,
+    "post_id" : 363692,
+    "comment_id" : 135891323,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "I would argue that this is no longer the &quot;standard answer&quot; as of Java 17, though it works well if you want a single global multhreaded generator. Per <a href=\"https://docs.oracle.com/en/java/javase/20/docs/api/java.base/java/util/random/RandomGenerator.html\" rel=\"nofollow noreferrer\"><code>RandomGenerator</code></a>, &quot;It is recommended that multithreaded applications use either <code>ThreadLocalRandom</code> or (preferably) pseudorandom number generators that implement the <code>RandomGenerator.SplittableGenerator</code> or <code>RandomGenerator.JumpableGenerator</code> interface.&quot;  See: <a href=\"https://stackoverflow.com/a/70529176/1108305\">stackoverflow.com/a/70529176/1108305</a>."
+  } ],
+  "has_more" : true,
+  "quota_max" : 10000,
+  "quota_remaining" : 9987
+}

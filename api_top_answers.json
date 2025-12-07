@@ -1,0 +1,595 @@
+{
+  "items" : [ {
+    "owner" : {
+      "account_id" : 559988,
+      "reputation" : 472833,
+      "user_id" : 922184,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/h7WDB.jpg?s=256",
+      "display_name" : "Mysticial",
+      "link" : "https://stackoverflow.com/users/922184/mysticial"
+    },
+    "is_accepted" : true,
+    "score" : 35238,
+    "last_activity_date" : 1709573833,
+    "last_edit_date" : 1709573833,
+    "creation_date" : 1340805402,
+    "answer_id" : 11227902,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p><strong>You are a victim of <a href=\"https://en.wikipedia.org/wiki/Branch_predictor\" rel=\"noreferrer\">branch prediction</a> fail.</strong></p>\n<hr />\n<h2>What is Branch Prediction?</h2>\n<p>Consider a railroad junction:</p>\n<p><a href=\"https://commons.wikimedia.org/wiki/File:Entroncamento_do_Transpraia.JPG\" rel=\"noreferrer\"><img src=\"https://i.sstatic.net/muxnt.jpg\" alt=\"Image showing a railroad junction\" /></a>\n<sub><a href=\"https://commons.wikimedia.org/wiki/File:Entroncamento_do_Transpraia.JPG\" rel=\"noreferrer\">Image</a> by Mecanismo, via Wikimedia Commons. Used under the <a href=\"https://creativecommons.org/licenses/by-sa/3.0/deed.en\" rel=\"noreferrer\">CC-By-SA 3.0</a> license.</sub></p>\n<p>Now for the sake of argument, suppose this is back in the 1800s - before long-distance or radio communication.</p>\n<p>You are a blind operator of a junction and you hear a train coming. You have no idea which way it is supposed to go. You stop the train to ask the driver which direction they want. And then you set the switch appropriately.</p>\n<p><em>Trains are heavy and have a lot of inertia, so they take forever to start up and slow down.</em></p>\n<p>Is there a better way? You guess which direction the train will go!</p>\n<ul>\n<li>If you guessed right, it continues on.</li>\n<li>If you guessed wrong, the driver will stop, back up, and yell at you to flip the switch. Then it can restart down the other path.</li>\n</ul>\n<p><strong>If you guess right every time</strong>, the train will never have to stop.<br />\n<strong>If you guess wrong too often</strong>, the train will spend a lot of time stopping, backing up, and restarting.</p>\n<hr />\n<p><strong>Consider an if-statement:</strong> At the processor level, it is a branch instruction:</p>\n<p><img src=\"https://i.sstatic.net/pyfwC.png\" alt=\"if(x &gt;= 128) compiles into a jump-if-less-than processor instruction.\" /></p>\n<p>You are a processor and you see a branch. You have no idea which way it will go. What do you do? You halt execution and wait until the previous instructions are complete. Then you continue down the correct path.</p>\n<p><em>Modern processors are complicated and have long pipelines. This means they take forever to &quot;warm up&quot; and &quot;slow down&quot;.</em></p>\n<p>Is there a better way? You guess which direction the branch will go!</p>\n<ul>\n<li>If you guessed right, you continue executing.</li>\n<li>If you guessed wrong, you need to flush the pipeline and roll back to the branch. Then you can restart down the other path.</li>\n</ul>\n<p><strong>If you guess right every time</strong>, the execution will never have to stop.<br />\n<strong>If you guess wrong too often</strong>, you spend a lot of time stalling, rolling back, and restarting.</p>\n<hr />\n<p>This is branch prediction. I admit it's not the best analogy since the train could just signal the direction with a flag. But in computers, the processor doesn't know which direction a branch will go until the last moment.</p>\n<p>How would you strategically guess to minimize the number of times that the train must back up and go down the other path? You look at the past history! If the train goes left 99% of the time, then you guess left. If it alternates, then you alternate your guesses. If it goes one way every three times, you guess the same...</p>\n<p><em><strong>In other words, you try to identify a pattern and follow it.</strong></em> This is more or less how branch predictors work.</p>\n<p>Most applications have well-behaved branches. Therefore, modern branch predictors will typically achieve &gt;90% hit rates. But when faced with unpredictable branches with no recognizable patterns, branch predictors are virtually useless.</p>\n<p>Further reading: <a href=\"https://en.wikipedia.org/wiki/Branch_predictor\" rel=\"noreferrer\">&quot;Branch predictor&quot; article on Wikipedia</a>.</p>\n<hr />\n<h2>As hinted from above, the culprit is this if-statement:</h2>\n<pre><code>if (data[c] &gt;= 128)\n    sum += data[c];\n</code></pre>\n<p>Notice that the data is evenly distributed between 0 and 255. When the data is sorted, roughly the first half of the iterations will not enter the if-statement. After that, they will all enter the if-statement.</p>\n<p>This is very friendly to the branch predictor since the branch consecutively goes the same direction many times. Even a simple saturating counter will correctly predict the branch except for the few iterations after it switches direction.</p>\n<p><strong>Quick visualization:</strong></p>\n<pre class=\"lang-none prettyprint-override\"><code>T = branch taken\nN = branch not taken\n\ndata[] = 0, 1, 2, 3, 4, ... 126, 127, 128, 129, 130, ... 250, 251, 252, ...\nbranch = N  N  N  N  N  ...   N    N    T    T    T  ...   T    T    T  ...\n\n       = NNNNNNNNNNNN ... NNNNNNNTTTTTTTTT ... TTTTTTTTTT  (easy to predict)\n</code></pre>\n<p>However, when the data is completely random, the branch predictor is rendered useless, because it can't predict random data. Thus there will probably be around 50% misprediction (no better than random guessing).</p>\n<pre class=\"lang-none prettyprint-override\"><code>data[] = 226, 185, 125, 158, 198, 144, 217, 79, 202, 118,  14, 150, 177, 182, ...\nbranch =   T,   T,   N,   T,   T,   T,   T,  N,   T,   N,   N,   T,   T,   T  ...\n\n       = TTNTTTTNTNNTTT ...   (completely random - impossible to predict)\n</code></pre>\n<hr />\n<p><strong>What can be done?</strong></p>\n<p>If the compiler isn't able to optimize the branch into a conditional move, you can try some hacks if you are willing to sacrifice readability for performance.</p>\n<p>Replace:</p>\n<pre><code>if (data[c] &gt;= 128)\n    sum += data[c];\n</code></pre>\n<p>with:</p>\n<pre><code>int t = (data[c] - 128) &gt;&gt; 31;\nsum += ~t &amp; data[c];\n</code></pre>\n<p>This eliminates the branch and replaces it with some bitwise operations.</p>\n<p><sub>(Note that this hack is not strictly equivalent to the original if-statement. But in this case, it's valid for all the input values of <code>data[]</code>.)</sub></p>\n<p><strong>Benchmarks: Core i7 920 @ 3.5 GHz</strong></p>\n<p>C++ - Visual Studio 2010 - x64 Release</p>\n<div class=\"s-table-container\"><table class=\"s-table\">\n<thead>\n<tr>\n<th>Scenario</th>\n<th>Time (seconds)</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Branching - Random data</td>\n<td>11.777</td>\n</tr>\n<tr>\n<td>Branching - Sorted data</td>\n<td>2.352</td>\n</tr>\n<tr>\n<td>Branchless - Random data</td>\n<td>2.564</td>\n</tr>\n<tr>\n<td>Branchless - Sorted data</td>\n<td>2.587</td>\n</tr>\n</tbody>\n</table></div>\n<p>Java - NetBeans 7.1.1 JDK 7 - x64</p>\n<div class=\"s-table-container\"><table class=\"s-table\">\n<thead>\n<tr>\n<th>Scenario</th>\n<th>Time (seconds)</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Branching - Random data</td>\n<td>10.93293813</td>\n</tr>\n<tr>\n<td>Branching - Sorted data</td>\n<td>5.643797077</td>\n</tr>\n<tr>\n<td>Branchless - Random data</td>\n<td>3.113581453</td>\n</tr>\n<tr>\n<td>Branchless - Sorted data</td>\n<td>3.186068823</td>\n</tr>\n</tbody>\n</table></div>\n<p>Observations:</p>\n<ul>\n<li><strong>With the Branch:</strong> There is a huge difference between the sorted and unsorted data.</li>\n<li><strong>With the Hack:</strong> There is no difference between sorted and unsorted data.</li>\n<li>In the C++ case, the hack is actually a tad slower than with the branch when the data is sorted.</li>\n</ul>\n<p>A general rule of thumb is to avoid data-dependent branching in critical loops (such as in this example).</p>\n<hr />\n<p><strong>Update:</strong></p>\n<ul>\n<li><p>GCC 4.6.1 with <code>-O3</code> or <code>-ftree-vectorize</code> on x64 is able to generate a conditional move, so there is no difference between the sorted and unsorted data - both are fast.  This is called &quot;if-conversion&quot; (to branchless) and is necessary for vectorization but also sometimes good for scalar.</p>\n<p>(Or somewhat fast: for the already-sorted case, <code>cmov</code> can be slower especially if GCC puts it on the critical path instead of just <code>add</code>, especially on Intel before Broadwell where <code>cmov</code> has 2-cycle latency: <em><a href=\"https://stackoverflow.com/questions/28875325/gcc-optimization-flag-o3-makes-code-slower-than-o2\">gcc optimization flag -O3 makes code slower than -O2</a></em>)</p>\n</li>\n<li><p>VC++ 2010 is unable to generate conditional moves for this branch even under <code>/Ox</code>.</p>\n</li>\n<li><p><a href=\"https://en.wikipedia.org/wiki/Intel_C++_Compiler\" rel=\"noreferrer\">Intel C++ Compiler</a> (ICC) 11 does something miraculous. It <a href=\"https://en.wikipedia.org/wiki/Loop_interchange\" rel=\"noreferrer\">interchanges the two loops</a>, thereby hoisting the unpredictable branch to the outer loop. Not only is it immune to the mispredictions, it's also twice as fast as whatever VC++ and GCC can generate! In other words, ICC took advantage of the test-loop to defeat the benchmark...</p>\n</li>\n<li><p>If you give the Intel compiler the branchless code, it just outright vectorizes it... and is just as fast as with the branch (with the loop interchange).</p>\n</li>\n</ul>\n<ul>\n<li>Clang also vectorizes the <code>if()</code> version, as will GCC 5 and later with <code>-O3</code>, even though it takes quite a few instructions to sign-extend to the 64-bit sum on x86 without SSE4 or AVX2.  (<code>-march=x86-64-v2</code> or <code>v3</code>).  See <em><a href=\"https://stackoverflow.com/questions/66521344/why-is-processing-an-unsorted-array-the-same-speed-as-processing-a-sorted-array\">Why is processing an unsorted array the same speed as processing a sorted array with modern x86-64 clang?</a></em></li>\n</ul>\n<p>This goes to show that even mature modern compilers can vary wildly in their ability to optimize code...</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 11683,
+      "reputation" : 1520802,
+      "user_id" : 22656,
+      "user_type" : "registered",
+      "accept_rate" : 86,
+      "profile_image" : "https://www.gravatar.com/avatar/6d8ebb117e8d83d74ea95fbdd0f87e13?s=256&d=identicon&r=PG",
+      "display_name" : "Jon Skeet",
+      "link" : "https://stackoverflow.com/users/22656/jon-skeet"
+    },
+    "is_accepted" : true,
+    "score" : 11937,
+    "last_activity_date" : 1740504452,
+    "last_edit_date" : 1740504452,
+    "creation_date" : 1311755470,
+    "answer_id" : 6841479,
+    "question_id" : 6841333,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>It's a time zone change on December 31st in Shanghai.</p>\n<p>See <a href=\"https://web.archive.org/web/20140821151721/https://www.timeanddate.com/time/change/china/shanghai?year=1927\" rel=\"noreferrer\">this page</a> for details of 1927 in Shanghai. Basically at midnight at the end of 1927, the clocks went back 5 minutes and 52 seconds. So &quot;1927-12-31 23:54:08&quot; actually happened twice, and it looks like Java is parsing it as the <em>later</em> possible instant for that local date/time - hence the difference.</p>\n<p>Just another episode in the often weird and wonderful world of time zones.</p>\n<p><strong>If rebuilt with version 2013a of <a href=\"https://github.com/nodatime/nodatime/blob/master/src/NodaTime.Demo/StackOverflowExamples.cs#L68\" rel=\"noreferrer\">TZDB</a></strong>, The original question would no longer demonstrate quite the same behaviour. In 2013a, the result would be 358 seconds, with a transition time of 23:54:03 instead of 23:54:08.</p>\n<p>I only noticed this because I'm collecting questions like this in Noda Time, in the form of <a href=\"https://github.com/nodatime/nodatime/blob/master/src/NodaTime.Demo/StackOverflowExamples.cs#L68\" rel=\"noreferrer\">unit tests</a>... The test has now been changed, but it just goes to show - not even historical data is safe.</p>\n<p><strong>In TZDB 2014f</strong>, the time of the change has moved to 1900-12-31, and it's now a mere 343 second change (so the time between <code>t</code> and <code>t+1</code> is 344 seconds, if you see what I mean).</p>\n<hr />\n<p>To answer a question around a transition at 1900... it looks like the Java time zone implementation treats <em>all</em> time zones as simply being in their standard time for any instant before the start of 1900 UTC:</p>\n<pre><code>import java.util.TimeZone;\n\npublic class Test {\n    public static void main(String[] args) throws Exception {\n        long startOf1900Utc = -2208988800000L;\n        for (String id : TimeZone.getAvailableIDs()) {\n            TimeZone zone = TimeZone.getTimeZone(id);\n            if (zone.getRawOffset() != zone.getOffset(startOf1900Utc - 1)) {\n                System.out.println(id);\n            }\n        }\n    }\n}\n</code></pre>\n<p>The code above produces no output on my Windows machine. So any time zone which has any offset other than its standard one at the start of 1900 will count that as a transition. TZDB itself has some data going back earlier than that, and doesn't rely on any idea of a &quot;fixed&quot; standard time (which is what <code>getRawOffset</code> assumes to be a valid concept) so other libraries needn't introduce this artificial transition.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 2953,
+      "reputation" : 6766,
+      "user_id" : 4192,
+      "user_type" : "registered",
+      "accept_rate" : 60,
+      "profile_image" : "https://www.gravatar.com/avatar/3ef3ba1fb05d589d272b01e28ec7b285?s=256&d=identicon&r=PG",
+      "display_name" : "erlando",
+      "link" : "https://stackoverflow.com/users/4192/erlando"
+    },
+    "is_accepted" : false,
+    "community_owned_date" : 1347646975,
+    "score" : 7144,
+    "last_activity_date" : 1725576929,
+    "last_edit_date" : 1725576929,
+    "creation_date" : 1220387137,
+    "answer_id" : 40523,
+    "question_id" : 40480,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>The terms &quot;pass-by-value&quot; and &quot;pass-by-reference&quot; have special, <a href=\"https://en.wikipedia.org/w/index.php?title=Pass-by-value\" rel=\"noreferrer\">precisely defined</a> meanings in computer science. These meanings differ from the intuition many people have when first hearing the terms. Much of the confusion in this discussion seems to come from this fact.</p>\n<p>The terms &quot;pass-by-value&quot; and &quot;pass-by-reference&quot; are talking about <em>variables.</em> Pass-by-value means that the <em>value</em> of a variable is passed to a function/method. Pass-by-reference means that a <em>reference</em> to that variable is passed to the function. The latter gives the function a way to change the contents of the variable.</p>\n<p>By those definitions, Java is always <strong>pass-by-value</strong>.  Unfortunately, when we deal with variables holding objects we are really dealing with object-handles called <em>references</em> which are passed-by-value as well. This terminology and semantics easily confuse many beginners.</p>\n<p>It goes like this:</p>\n<pre><code>public static void main(String[] args) {\n    Dog aDog = new Dog(&quot;Max&quot;);\n    Dog oldDog = aDog;\n\n    // we pass the object to foo\n    foo(aDog);\n    // aDog variable is still pointing to the &quot;Max&quot; dog when foo(...) returns\n    aDog.getName().equals(&quot;Max&quot;); // true\n    aDog.getName().equals(&quot;Fifi&quot;); // false\n    aDog == oldDog; // true\n}\n\npublic static void foo(Dog d) {\n    d.getName().equals(&quot;Max&quot;); // true\n    // change d inside of foo() to point to a new Dog instance construct red with name member variable set to &quot;Fifi&quot;\n    d = new Dog(&quot;Fifi&quot;);\n    d.getName().equals(&quot;Fifi&quot;); // true\n}\n</code></pre>\n<p>In this example, <code>aDog.getName()</code> will still return <code>&quot;Max&quot;</code>. The value <code>aDog</code> within <code>main</code> is not changed in the function <code>foo</code> by creating new <code>Dog</code> with name member variable set to <code>&quot;Fifi&quot;</code> because the object reference is passed by value. If the object reference was passed by reference, then the <code>aDog.getName()</code> in <code>main</code> would return <code>&quot;Fifi&quot;</code> after the call to <code>foo</code>.</p>\n<p>Likewise:</p>\n<pre><code>public static void main(String[] args) {\n    Dog aDog = new Dog(&quot;Max&quot;);\n    Dog oldDog = aDog;\n\n    foo(aDog);\n    // when foo(...) returns, the name of the dog has been changed to &quot;Fifi&quot;\n    aDog.getName().equals(&quot;Fifi&quot;); // true\n    // but it is still the same dog:\n    aDog == oldDog; // true\n}\n\npublic static void foo(Dog d) {\n    d.getName().equals(&quot;Max&quot;); // true\n    // this changes the name of d to be &quot;Fifi&quot;\n    d.setName(&quot;Fifi&quot;);\n}\n</code></pre>\n<p>In this example, <code>Fifi</code> is dog’s name after call to <code>foo(aDog)</code> because the object's name was set inside of <code>foo(...)</code>. Any operations that <code>foo</code> performs on <code>d</code> are such that, for all practical purposes, they are performed on <code>aDog</code>, but it is <strong>not</strong> possible to change the value of the variable <code>aDog</code> itself.</p>\n<p>For more information on pass by reference and pass by value, consult the following answer: <a href=\"https://stackoverflow.com/a/430958/6005228\">https://stackoverflow.com/a/430958/6005228</a>. This explains more thoroughly the semantics and history behind the two and also explains why Java and many other modern languages appear to do both in certain cases.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 988,
+      "reputation" : 87533,
+      "user_id" : 1310,
+      "user_type" : "registered",
+      "accept_rate" : 98,
+      "profile_image" : "https://www.gravatar.com/avatar/9cb44812fc259d55c656dd8038ea5af3?s=256&d=identicon&r=PG",
+      "display_name" : "ScArcher2",
+      "link" : "https://stackoverflow.com/users/1310/scarcher2"
+    },
+    "is_accepted" : true,
+    "score" : 5958,
+    "last_activity_date" : 1625658648,
+    "last_edit_date" : 1625658648,
+    "creation_date" : 1220649352,
+    "answer_id" : 46908,
+    "question_id" : 46898,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<pre class=\"lang-java prettyprint-override\"><code>Map&lt;String, String&gt; map = ...\nfor (Map.Entry&lt;String, String&gt; entry : map.entrySet()) {\n    System.out.println(entry.getKey() + &quot;/&quot; + entry.getValue());\n}\n</code></pre>\n<p>On Java 10+:</p>\n<pre class=\"lang-java prettyprint-override\"><code>for (var entry : map.entrySet()) {\n    System.out.println(entry.getKey() + &quot;/&quot; + entry.getValue());\n}\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 11769,
+      "reputation" : 56451,
+      "user_id" : 22850,
+      "user_type" : "registered",
+      "accept_rate" : 60,
+      "profile_image" : "https://www.gravatar.com/avatar/955fd033a0583419b2e2b7d2515e2e92?s=256&d=identicon&r=PG",
+      "display_name" : "Tom",
+      "link" : "https://stackoverflow.com/users/22850/tom"
+    },
+    "is_accepted" : true,
+    "score" : 5152,
+    "last_activity_date" : 1697271589,
+    "last_edit_date" : 1697271589,
+    "creation_date" : 1222871952,
+    "answer_id" : 157950,
+    "question_id" : 157944,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>You can use the following instruction:</p>\n<pre><code>new ArrayList&lt;&gt;(Arrays.asList(array));\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 996105,
+      "reputation" : 184474,
+      "user_id" : 1011995,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/Jca5Q.jpg?s=256",
+      "display_name" : "Daniel Fischer",
+      "link" : "https://stackoverflow.com/users/1011995/daniel-fischer"
+    },
+    "is_accepted" : false,
+    "score" : 4758,
+    "last_activity_date" : 1470383590,
+    "last_edit_date" : 1592644375,
+    "creation_date" : 1340805285,
+    "answer_id" : 11227877,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p><strong>Branch prediction.</strong></p>\n<p>With a sorted array, the condition <code>data[c] &gt;= 128</code> is first <code>false</code> for a streak of values, then becomes <code>true</code> for all later values. That's easy to predict. With an unsorted array, you pay for the branching cost.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 369,
+      "reputation" : 47521,
+      "user_id" : 462,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/dcda1d207d2f416d1608aa625fdedb7f?s=256&d=identicon&r=PG",
+      "display_name" : "Greg Case",
+      "link" : "https://stackoverflow.com/users/462/greg-case"
+    },
+    "is_accepted" : false,
+    "score" : 4400,
+    "last_activity_date" : 1724305933,
+    "last_edit_date" : 1724305933,
+    "creation_date" : 1229106327,
+    "answer_id" : 363692,
+    "question_id" : 363681,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<h2>Java 7+</h2>\n<p>In <strong>Java 1.7 or later</strong>, the standard way to do this (generate a basic non-cryptographically secure random integer in the range <em>[min, max]</em>) is as follows:</p>\n<pre><code>import java.util.concurrent.ThreadLocalRandom;\n\n// nextInt is normally exclusive of the top value,\n// so add 1 to make it inclusive\nint randomNum = ThreadLocalRandom.current().nextInt(min, max + 1);\n</code></pre>\n<p>See <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/concurrent/ThreadLocalRandom.html#nextInt(int,int)\" rel=\"noreferrer\">the relevant JavaDoc</a>.  This approach has the advantage of not needing to explicitly initialize a <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/Random.html\" rel=\"noreferrer\">java.util.Random</a> instance, which can be a source of confusion and error if used inappropriately.</p>\n<p>However, conversely with <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/concurrent/ThreadLocalRandom.html\" rel=\"noreferrer\">ThreadLocalRandom</a> there is no way to explicitly set the seed so it can be difficult to reproduce results in situations where that is useful such as testing or saving game states or similar.</p>\n<h3>Java 17+</h3>\n<p>As of <strong>Java 17</strong>, the psuedorandom number generating classes in the standard library implement the <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/random/RandomGenerator.html\" rel=\"noreferrer\"><code>RandomGenerator</code></a> interface.  See the linked JavaDoc for more information.  For example, if a cryptographically strong random number generator is desired, the <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/security/SecureRandom.html\" rel=\"noreferrer\"><code>SecureRandom</code></a> class can be used.</p>\n<h2>Earlier Java</h2>\n<p><strong>Before Java 1.7</strong>, the standard way to do this is as follows:</p>\n<pre><code>import java.util.Random;\n\n/**\n * Returns a pseudo-random number between min and max, inclusive.\n * The difference between min and max can be at most\n * &lt;code&gt;Integer.MAX_VALUE - 1&lt;/code&gt;.\n *\n * @param min Minimum value\n * @param max Maximum value.  Must be greater than min.\n * @return Integer between min and max, inclusive.\n * @see java.util.Random#nextInt(int)\n */\npublic static int randInt(int min, int max) {\n\n    // NOTE: This will (intentionally) not run as written so that folks\n    // copy-pasting have to think about how to initialize their\n    // Random instance.  Initialization of the Random instance is outside\n    // the main scope of the question, but some decent options are to have\n    // a field that is initialized once and then re-used as needed or to\n    // use ThreadLocalRandom (if using at least Java 1.7).\n    // \n    // In particular, do NOT do 'Random rand = new Random()' here or you\n    // will get not very good / not very random results.\n    Random rand;\n\n    // nextInt is normally exclusive of the top value,\n    // so add 1 to make it inclusive\n    int randomNum = rand.nextInt((max - min) + 1) + min;\n\n    return randomNum;\n}\n</code></pre>\n<p>See <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/Random.html#nextInt(int)\" rel=\"noreferrer\">the relevant JavaDoc</a>.  In practice, the <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/util/Random.html\" rel=\"noreferrer\">java.util.Random</a> class is often preferable to <a href=\"https://docs.oracle.com/en/java/javase/22/docs/api/java.base/java/lang/Math.html#random()\" rel=\"noreferrer\">java.lang.Math.random()</a>.</p>\n<p>In particular, there is no need to reinvent the random integer generation wheel when there is a straightforward API within the standard library to accomplish the task.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 1518,
+      "reputation" : 53394,
+      "user_id" : 2030,
+      "user_type" : "registered",
+      "accept_rate" : 91,
+      "profile_image" : "https://www.gravatar.com/avatar/73fad2d46ffaac8dd679d302a681147b?s=256&d=identicon&r=PG",
+      "display_name" : "Josh Brown",
+      "link" : "https://stackoverflow.com/users/2030/josh-brown"
+    },
+    "is_accepted" : true,
+    "score" : 4263,
+    "last_activity_date" : 1675776375,
+    "last_edit_date" : 1675776375,
+    "creation_date" : 1220396557,
+    "answer_id" : 40878,
+    "question_id" : 40471,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>There are several differences between <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/HashMap.html\" rel=\"noreferrer\"><code>HashMap</code></a> and <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Hashtable.html\" rel=\"noreferrer\"><code>Hashtable</code></a> in Java:</p>\n<ol>\n<li><p><code>Hashtable</code> is <a href=\"https://stackoverflow.com/questions/1085709/what-does-synchronized-mean\">synchronized</a>, whereas <code>HashMap</code> is not. This makes <code>HashMap</code> better for non-threaded applications, as unsynchronized Objects typically perform better than synchronized ones.</p>\n</li>\n<li><p><code>Hashtable</code> does not allow <code>null</code> keys or values.  <code>HashMap</code> allows one <code>null</code> key and any number of <code>null</code> values.</p>\n</li>\n<li><p>One of HashMap's subclasses is <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/LinkedHashMap.html\" rel=\"noreferrer\"><code>LinkedHashMap</code></a>, so in the event that you'd want predictable iteration order (which is insertion order by default), you could easily swap out the <code>HashMap</code> for a <code>LinkedHashMap</code>.  This wouldn't be as easy if you were using <code>Hashtable</code>.</p>\n</li>\n</ol>\n<p>Since synchronization is not an issue for you, I'd recommend <code>HashMap</code>. If synchronization becomes an issue, you may also look at <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/ConcurrentHashMap.html\" rel=\"noreferrer\"><code>ConcurrentHashMap</code></a>.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 463679,
+      "reputation" : 48357,
+      "user_id" : 866732,
+      "user_type" : "registered",
+      "accept_rate" : 88,
+      "profile_image" : "https://www.gravatar.com/avatar/f09f0253204000d6083ed1de21afc6fd?s=256&d=identicon&r=PG",
+      "display_name" : "WiSaGaN",
+      "link" : "https://stackoverflow.com/users/866732/wisagan"
+    },
+    "is_accepted" : false,
+    "score" : 3858,
+    "last_activity_date" : 1656861172,
+    "last_edit_date" : 1656861172,
+    "creation_date" : 1340849643,
+    "answer_id" : 11237235,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>The reason why performance improves drastically when the data is sorted is that the branch prediction penalty is removed, as explained beautifully in <a href=\"//stackoverflow.com/questions/11227809/why-is-it-faster-to-process-a-sorted-array-than-an-unsorted-array/11227902#11227902\">Mysticial's answer</a>.</p>\n<p>Now, if we look at the code</p>\n<pre><code>if (data[c] &gt;= 128)\n    sum += data[c];\n</code></pre>\n<p>we can find that the meaning of this particular <code>if... else...</code> branch is to add something when a condition is satisfied. This type of branch can be easily transformed into a <strong>conditional move</strong> statement, which would be compiled into a conditional move instruction: <code>cmovl</code>, in an <code>x86</code> system. The branch and thus the potential branch prediction penalty is removed.</p>\n<p>In <code>C</code>, thus <code>C++</code>, the statement, which would compile directly (without any optimization) into the conditional move instruction in <code>x86</code>, is the ternary operator <code>... ? ... : ...</code>. So we rewrite the above statement into an equivalent one:</p>\n<pre><code>sum += data[c] &gt;=128 ? data[c] : 0;\n</code></pre>\n<p>While maintaining readability, we can check the speedup factor.</p>\n<p>On an Intel <a href=\"//en.wikipedia.org/wiki/Intel_Core#Core_i7\" rel=\"noreferrer\">Core i7</a>-2600K @ 3.4 GHz and Visual Studio 2010 Release Mode, the benchmark is:</p>\n<p><strong>x86</strong></p>\n<div class=\"s-table-container\">\n<table class=\"s-table\">\n<thead>\n<tr>\n<th>Scenario</th>\n<th>Time (seconds)</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Branching - Random data</td>\n<td>8.885</td>\n</tr>\n<tr>\n<td>Branching - Sorted data</td>\n<td>1.528</td>\n</tr>\n<tr>\n<td>Branchless - Random data</td>\n<td>3.716</td>\n</tr>\n<tr>\n<td>Branchless - Sorted data</td>\n<td>3.71</td>\n</tr>\n</tbody>\n</table>\n</div>\n<p><strong>x64</strong></p>\n<div class=\"s-table-container\">\n<table class=\"s-table\">\n<thead>\n<tr>\n<th>Scenario</th>\n<th>Time (seconds)</th>\n</tr>\n</thead>\n<tbody>\n<tr>\n<td>Branching - Random data</td>\n<td>11.302</td>\n</tr>\n<tr>\n<td>Branching - Sorted data</td>\n<td>1.830</td>\n</tr>\n<tr>\n<td>Branchless - Random data</td>\n<td>2.736</td>\n</tr>\n<tr>\n<td>Branchless - Sorted data</td>\n<td>2.737</td>\n</tr>\n</tbody>\n</table>\n</div>\n<p>The result is robust in multiple tests. We get a great speedup when the branch result is unpredictable, but we suffer a little bit when it is predictable. In fact, when using a conditional move, the performance is the same regardless of the data pattern.</p>\n<p>Now let's look more closely by investigating the <code>x86</code> assembly they generate. For simplicity, we use two functions <code>max1</code> and <code>max2</code>.</p>\n<p><code>max1</code> uses the conditional branch <code>if... else ...</code>:</p>\n<pre><code>int max1(int a, int b) {\n    if (a &gt; b)\n        return a;\n    else\n        return b;\n}\n</code></pre>\n<p><code>max2</code> uses the ternary operator <code>... ? ... : ...</code>:</p>\n<pre><code>int max2(int a, int b) {\n    return a &gt; b ? a : b;\n}\n</code></pre>\n<p>On an x86-64 machine, <code>GCC -S</code> generates the assembly below.</p>\n<pre><code>:max1\n    movl    %edi, -4(%rbp)\n    movl    %esi, -8(%rbp)\n    movl    -4(%rbp), %eax\n    cmpl    -8(%rbp), %eax\n    jle     .L2\n    movl    -4(%rbp), %eax\n    movl    %eax, -12(%rbp)\n    jmp     .L4\n.L2:\n    movl    -8(%rbp), %eax\n    movl    %eax, -12(%rbp)\n.L4:\n    movl    -12(%rbp), %eax\n    leave\n    ret\n\n:max2\n    movl    %edi, -4(%rbp)\n    movl    %esi, -8(%rbp)\n    movl    -4(%rbp), %eax\n    cmpl    %eax, -8(%rbp)\n    cmovge  -8(%rbp), %eax\n    leave\n    ret\n</code></pre>\n<p><code>max2</code> uses much less code due to the usage of instruction <code>cmovge</code>. But the real gain is that <code>max2</code> does not involve branch jumps, <code>jmp</code>, which would have a significant performance penalty if the predicted result is not right.</p>\n<p>So why does a conditional move perform better?</p>\n<p>In a typical <code>x86</code> processor, the execution of an instruction is divided into several stages. Roughly, we have different hardware to deal with different stages. So we do not have to wait for one instruction to finish to start a new one. This is called <strong><a href=\"//en.wikipedia.org/wiki/Pipeline_(computing)\" rel=\"noreferrer\">pipelining</a></strong>.</p>\n<p>In a branch case, the following instruction is determined by the preceding one, so we cannot do pipelining. We have to either wait or predict.</p>\n<p>In a conditional move case, the execution of conditional move instruction is divided into several stages, but the earlier stages like <code>Fetch</code> and <code>Decode</code> do not depend on the result of the previous instruction; only the latter stages need the result. Thus, we wait a fraction of one instruction's execution time. This is why the conditional move version is slower than the branch when the prediction is easy.</p>\n<p>The book <em><a href=\"https://rads.stackoverflow.com/amzn/click/com/0136108040\" rel=\"noreferrer\" rel=\"nofollow noreferrer\">Computer Systems: A Programmer's Perspective, second edition</a></em> explains this in detail. You can check Section 3.6.6 for <em>Conditional Move Instructions</em>, entire Chapter 4 for <em>Processor Architecture</em>, and Section 5.11.2 for special treatment for <em>Branch Prediction and Misprediction Penalties</em>.</p>\n<p>Sometimes, some modern compilers can optimize our code to assembly with better performance, and sometimes some compilers can't (the code in question is using Visual Studio's native compiler). Knowing the performance difference between a branch and a conditional move when unpredictable can help us write code with better performance when the scenario gets so complex that the compiler can not optimize them automatically.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 7257,
+      "reputation" : 30740,
+      "user_id" : 12541,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/Yk2vr.jpg?s=256",
+      "display_name" : "Scott Stanchfield",
+      "link" : "https://stackoverflow.com/users/12541/scott-stanchfield"
+    },
+    "is_accepted" : false,
+    "community_owned_date" : 1347646975,
+    "score" : 3627,
+    "last_activity_date" : 1754960500,
+    "last_edit_date" : 1754960500,
+    "creation_date" : 1221575820,
+    "answer_id" : 73021,
+    "question_id" : 40480,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>I'm the author of the <a href=\"http://javadude.com/articles/passbyvalue.htm\" rel=\"noreferrer\">blog post</a> you're talking about. To clarify a few things:</p>\n<p>The Java Spec says that everything in Java is pass-by-value. There is no such thing as &quot;pass-by-reference&quot; in Java.</p>\n<p>The key to understanding this is that something like</p>\n<pre><code>Dog myDog;\n</code></pre>\n<p>is <em>not</em> a Dog; it's actually a <em>pointer</em> to a Dog. The use of the term &quot;reference&quot; in Java is very misleading and is what causes most of the confusion here. What they call &quot;references&quot; act/feel more like what we'd call &quot;pointers&quot; in most other languages.</p>\n<p>What that means, is when you have</p>\n<pre><code>Dog myDog = new Dog(&quot;Rover&quot;);\nfoo(myDog);\n</code></pre>\n<p>you're essentially passing the <em>address</em> of the created <code>Dog</code> object to the <code>foo</code> method.</p>\n<p>(I say essentially because Java pointers/references aren't direct addresses, but it's easiest to think of them that way.)</p>\n<p>Suppose the <code>Dog</code> object resides at memory address 42. This means we pass 42 to the method.</p>\n<p>if the Method were defined as</p>\n<pre><code>public void foo(Dog someDog) {\n    someDog.setName(&quot;Max&quot;);     // AAA\n    someDog = new Dog(&quot;Fifi&quot;);  // BBB\n    someDog.setName(&quot;Rowlf&quot;);   // CCC\n}\n</code></pre>\n<p>let's look at what's happening.</p>\n<ul>\n<li>the parameter <code>someDog</code> is set to the value 42</li>\n<li>at line &quot;AAA&quot;\n<ul>\n<li><code>someDog</code> is followed to the <code>Dog</code> it points to (the <code>Dog</code> object at address 42)</li>\n<li>that <code>Dog</code> (the one at address 42) is asked to change his name to Max</li>\n</ul>\n</li>\n<li>at line &quot;BBB&quot;\n<ul>\n<li>a new <code>Dog</code> is created. Let's say he's at address 74</li>\n<li>we assign the parameter <code>someDog</code> to 74</li>\n</ul>\n</li>\n<li>at line &quot;CCC&quot;\n<ul>\n<li>someDog is followed to the <code>Dog</code> it points to (the <code>Dog</code> object at address 74)</li>\n<li>that <code>Dog</code> (the one at address 74) is asked to change his name to Rowlf</li>\n</ul>\n</li>\n<li>then, we return</li>\n</ul>\n<p>Now let's think about what happens outside the method:</p>\n<p><em>Did <code>myDog</code> change?</em></p>\n<p>There's the key.</p>\n<p>Keeping in mind that <code>myDog</code> is a <em>pointer</em>, and not an actual <code>Dog</code>, the answer is NO. <code>myDog</code> still has the value 42; it's still pointing to the original <code>Dog</code> (but note that because of line &quot;AAA&quot;, its name is now &quot;Max&quot; - still the same Dog; <code>myDog</code>'s value has not changed.)</p>\n<p>It's perfectly valid to <em>follow</em> an address and change what's at the end of it; that does not change the variable, however.</p>\n<p>Java works exactly like C. You can assign a pointer, pass the pointer to a method, follow the pointer in the method and change the data that was pointed to. However, the caller will not see any changes you make to where that pointer points. (In a language with pass-by-reference semantics, the method function <em>can</em> change the pointer and the caller will see that change.)</p>\n<p>In C++, Ada, Pascal and other languages that support pass-by-reference, you can actually change the variable that was passed.</p>\n<p>If Java had pass-by-reference semantics, the <code>foo</code> method we defined above would have changed where <code>myDog</code> was pointing when it assigned <code>someDog</code> on line BBB.</p>\n<p>Think of reference parameters as being aliases for the variable passed in. When that alias is assigned, so is the variable that was passed in.</p>\n<p>A discussion in the comments warrants some clarification...</p>\n<p>In C, you can write</p>\n<pre class=\"lang-c prettyprint-override\"><code>void swap(int *x, int *y) {\n    int t = *x;\n    *x = *y;\n    *y = t;\n}\n\nint x = 1;\nint y = 2;\nswap(&amp;x, &amp;y);\n</code></pre>\n<p>This is not a special case in C. Both languages use pass-by-value semantics. Here the call site is creating additional data structure to assist the function to access and manipulate data.</p>\n<p>The function is being passed pointers to data, and follows those pointers to access and modify that data.</p>\n<p>A similar approach in Java, where the caller sets up assisting structure, might be:</p>\n<pre class=\"lang-java prettyprint-override\"><code>void swap(int[] x, int[] y) {\n    int temp = x[0];\n    x[0] = y[0];\n    y[0] = temp;\n}\n\nint[] x = {1};\nint[] y = {2};\nswap(x, y);\n</code></pre>\n<p>(or if you wanted both examples to demonstrate features the other language doesn't have, create a mutable IntWrapper class to use in place of the arrays)</p>\n<p>In these cases, both C and Java are <em>simulating</em> pass-by-reference. They're still both passing values (pointers to ints or arrays), and following those pointers inside the called function to manipulate the data.</p>\n<p>Pass-by-reference is all about the function <em>declaration/definition</em>, and how it handles its parameters. Reference semantics apply to <em>every</em> call to that function, and the call site only needs to pass variables, no additional data structure.</p>\n<p>These simulations require the call site and the function to cooperate. No doubt it's useful, but it's still pass-by-value.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 5426896,
+      "reputation" : 60422,
+      "user_id" : 4318868,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/p6Tpv.jpg?s=256",
+      "display_name" : "Slava Vedenin",
+      "link" : "https://stackoverflow.com/users/4318868/slava-vedenin"
+    },
+    "is_accepted" : false,
+    "score" : 3597,
+    "last_activity_date" : 1684452646,
+    "last_edit_date" : 1684452646,
+    "creation_date" : 1455670728,
+    "answer_id" : 35446009,
+    "question_id" : 309424,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>To summarize the other answers, I found 11 main ways to do this (see below). And I wrote some performance tests (see results below):</p>\n<p><strong>Ways to convert an InputStream to a String:</strong></p>\n<ol>\n<li><p>Using <code>IOUtils.toString</code> (Apache Utils)</p>\n<pre><code> String result = IOUtils.toString(inputStream, StandardCharsets.UTF_8);\n</code></pre>\n</li>\n<li><p>Using <code>CharStreams</code> (Guava)</p>\n<pre><code> String result = CharStreams.toString(new InputStreamReader(\n       inputStream, Charsets.UTF_8));\n</code></pre>\n</li>\n<li><p>Using <code>Scanner</code> (JDK)</p>\n<pre><code> Scanner s = new Scanner(inputStream).useDelimiter(&quot;\\\\A&quot;);\n String result = s.hasNext() ? s.next() : &quot;&quot;;\n</code></pre>\n</li>\n<li><p>Using <strong>Stream API</strong> (Java 8). <strong>Warning</strong>: This solution converts different line breaks (like <code>\\r\\n</code>) to <code>\\n</code>.</p>\n<pre><code> String result = new BufferedReader(new InputStreamReader(inputStream))\n   .lines().collect(Collectors.joining(&quot;\\n&quot;));\n</code></pre>\n</li>\n<li><p>Using <strong>parallel Stream API</strong> (Java 8). <strong>Warning</strong>: This solution converts different line breaks (like <code>\\r\\n</code>) to <code>\\n</code>.</p>\n<pre><code> String result = new BufferedReader(new InputStreamReader(inputStream))\n    .lines().parallel().collect(Collectors.joining(&quot;\\n&quot;));\n</code></pre>\n</li>\n<li><p>Using <code>InputStreamReader</code> and <code>StringBuilder</code> (JDK)</p>\n<pre><code> int bufferSize = 1024;\n char[] buffer = new char[bufferSize];\n StringBuilder out = new StringBuilder();\n Reader in = new InputStreamReader(stream, StandardCharsets.UTF_8);\n for (int numRead; (numRead = in.read(buffer, 0, buffer.length)) &gt; 0; ) {\n     out.append(buffer, 0, numRead);\n }\n return out.toString();\n</code></pre>\n</li>\n<li><p>Using <code>StringWriter</code> and <code>IOUtils.copy</code> (Apache Commons)</p>\n<pre><code> StringWriter writer = new StringWriter();\n IOUtils.copy(inputStream, writer, &quot;UTF-8&quot;);\n return writer.toString();\n</code></pre>\n</li>\n<li><p>Using <code>ByteArrayOutputStream</code> and <code>inputStream.read</code> (JDK)</p>\n<pre><code> ByteArrayOutputStream result = new ByteArrayOutputStream();\n byte[] buffer = new byte[1024];\n for (int length; (length = inputStream.read(buffer)) != -1; ) {\n     result.write(buffer, 0, length);\n }\n // StandardCharsets.UTF_8.name() &gt; JDK 7\n return result.toString(&quot;UTF-8&quot;);\n</code></pre>\n</li>\n<li><p>Using <code>BufferedReader</code> (JDK). <strong>Warning:</strong> This solution converts different line breaks (like <code>\\n\\r</code>) to <code>line.separator</code> system property (for example, in Windows to &quot;\\r\\n&quot;).</p>\n<pre><code> String newLine = System.getProperty(&quot;line.separator&quot;);\n BufferedReader reader = new BufferedReader(\n         new InputStreamReader(inputStream));\n StringBuilder result = new StringBuilder();\n for (String line; (line = reader.readLine()) != null; ) {\n     if (result.length() &gt; 0) {\n         result.append(newLine);\n     }\n     result.append(line);\n }\n return result.toString();\n</code></pre>\n</li>\n<li><p>Using <code>BufferedInputStream</code> and <code>ByteArrayOutputStream</code> (JDK)</p>\n<pre><code>BufferedInputStream bis = new BufferedInputStream(inputStream);\nByteArrayOutputStream buf = new ByteArrayOutputStream();\nfor (int result = bis.read(); result != -1; result = bis.read()) {\n    buf.write((byte) result);\n}\n// StandardCharsets.UTF_8.name() &gt; JDK 7\nreturn buf.toString(&quot;UTF-8&quot;);\n</code></pre>\n</li>\n<li><p>Using <code>inputStream.read()</code> and <code>StringBuilder</code> (JDK). <strong>Warning</strong>: This solution has problems with Unicode, for example with Russian text (works correctly only with non-Unicode text)</p>\n<pre><code>StringBuilder sb = new StringBuilder();\nfor (int ch; (ch = inputStream.read()) != -1; ) {\n    sb.append((char) ch);\n}\nreturn sb.toString();\n</code></pre>\n</li>\n</ol>\n<p><strong>Warning</strong>:</p>\n<ol>\n<li><p>Solutions 4, 5 and 9 convert different line breaks to one.</p>\n</li>\n<li><p>Solution 11 can't work correctly with Unicode text</p>\n</li>\n</ol>\n<p><strong>Performance tests</strong></p>\n<p>Performance tests for small <code>String</code> (length = 175), url in <a href=\"https://github.com/Vedenin/useful-java-links/blob/master/helloworlds/5.0-other-examples/src/main/java/other_examples/ConvertInputStreamToStringBenchmark.java\" rel=\"noreferrer\">github</a> (mode = Average Time, system = Linux, score 1,343 is the best):</p>\n<pre class=\"lang-none prettyprint-override\"><code>              Benchmark                         Mode  Cnt   Score   Error  Units\n 8. ByteArrayOutputStream and read (JDK)        avgt   10   1,343 ± 0,028  us/op\n 6. InputStreamReader and StringBuilder (JDK)   avgt   10   6,980 ± 0,404  us/op\n10. BufferedInputStream, ByteArrayOutputStream  avgt   10   7,437 ± 0,735  us/op\n11. InputStream.read() and StringBuilder (JDK)  avgt   10   8,977 ± 0,328  us/op\n 7. StringWriter and IOUtils.copy (Apache)      avgt   10  10,613 ± 0,599  us/op\n 1. IOUtils.toString (Apache Utils)             avgt   10  10,605 ± 0,527  us/op\n 3. Scanner (JDK)                               avgt   10  12,083 ± 0,293  us/op\n 2. CharStreams (guava)                         avgt   10  12,999 ± 0,514  us/op\n 4. Stream Api (Java 8)                         avgt   10  15,811 ± 0,605  us/op\n 9. BufferedReader (JDK)                        avgt   10  16,038 ± 0,711  us/op\n 5. parallel Stream Api (Java 8)                avgt   10  21,544 ± 0,583  us/op\n</code></pre>\n<p>Performance tests for big <code>String</code> (length = 50100), url in <a href=\"https://github.com/Vedenin/useful-java-links/blob/master/helloworlds/5.0-other-examples/src/main/java/other_examples/ConvertBigStringToInputStreamBenchmark.java\" rel=\"noreferrer\">github</a> (mode = Average Time, system = Linux, score 200,715 is the best):</p>\n<pre class=\"lang-none prettyprint-override\"><code>               Benchmark                        Mode  Cnt   Score        Error  Units\n 8. ByteArrayOutputStream and read (JDK)        avgt   10   200,715 ±   18,103  us/op\n 1. IOUtils.toString (Apache Utils)             avgt   10   300,019 ±    8,751  us/op\n 6. InputStreamReader and StringBuilder (JDK)   avgt   10   347,616 ±  130,348  us/op\n 7. StringWriter and IOUtils.copy (Apache)      avgt   10   352,791 ±  105,337  us/op\n 2. CharStreams (guava)                         avgt   10   420,137 ±   59,877  us/op\n 9. BufferedReader (JDK)                        avgt   10   632,028 ±   17,002  us/op\n 5. parallel Stream Api (Java 8)                avgt   10   662,999 ±   46,199  us/op\n 4. Stream Api (Java 8)                         avgt   10   701,269 ±   82,296  us/op\n10. BufferedInputStream, ByteArrayOutputStream  avgt   10   740,837 ±    5,613  us/op\n 3. Scanner (JDK)                               avgt   10   751,417 ±   62,026  us/op\n11. InputStream.read() and StringBuilder (JDK)  avgt   10  2919,350 ± 1101,942  us/op\n</code></pre>\n<p>Graphs (performance tests depending on Input Stream length in Windows 7 system)<br />\n<a href=\"https://i.sstatic.net/AYYhz.png\" rel=\"noreferrer\"><img src=\"https://i.sstatic.net/AYYhz.png\" alt=\"enter image description here\" /></a></p>\n<p>Performance test (Average Time) depending on Input Stream length in Windows 7 system:</p>\n<pre class=\"lang-none prettyprint-override\"><code> length  182    546     1092    3276    9828    29484   58968\n\n test8  0.38    0.938   1.868   4.448   13.412  36.459  72.708\n test4  2.362   3.609   5.573   12.769  40.74   81.415  159.864\n test5  3.881   5.075   6.904   14.123  50.258  129.937 166.162\n test9  2.237   3.493   5.422   11.977  45.98   89.336  177.39\n test6  1.261   2.12    4.38    10.698  31.821  86.106  186.636\n test7  1.601   2.391   3.646   8.367   38.196  110.221 211.016\n test1  1.529   2.381   3.527   8.411   40.551  105.16  212.573\n test3  3.035   3.934   8.606   20.858  61.571  118.744 235.428\n test2  3.136   6.238   10.508  33.48   43.532  118.044 239.481\n test10 1.593   4.736   7.527   20.557  59.856  162.907 323.147\n test11 3.913   11.506  23.26   68.644  207.591 600.444 1211.545\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 9867,
+      "reputation" : 626918,
+      "user_id" : 18393,
+      "user_type" : "registered",
+      "accept_rate" : 82,
+      "profile_image" : "https://www.gravatar.com/avatar/2f364c2e36b52bc80296cbf23da8b231?s=256&d=identicon&r=PG",
+      "display_name" : "cletus",
+      "link" : "https://stackoverflow.com/users/18393/cletus"
+    },
+    "is_accepted" : true,
+    "community_owned_date" : 1319187757,
+    "score" : 2877,
+    "last_activity_date" : 1650570458,
+    "last_edit_date" : 1650570458,
+    "creation_date" : 1226059600,
+    "answer_id" : 271874,
+    "question_id" : 271526,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>This to me sounds like a reasonably common problem that junior to intermediate developers tend to face at some point: they either don't know or don't trust the contracts they are participating in and defensively overcheck for nulls.  Additionally, when writing their own code, they tend to rely on returning nulls to indicate something thus requiring the caller to check for nulls.</p>\n<p>To put this another way, there are two instances where null checking comes up:</p>\n<ol>\n<li><p>Where null is a valid response in terms of the contract; and</p>\n</li>\n<li><p>Where it isn't a valid response.</p>\n</li>\n</ol>\n<p>(2) is easy.  As of Java 1.7 you can use <a href=\"https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Objects.html#requireNonNull(T)\" rel=\"noreferrer\"><code>Objects.requireNonNull(foo)</code></a>. (If you are stuck with a previous version then <a href=\"https://docs.oracle.com/javase/7/docs/technotes/guides/language/assert.html\" rel=\"noreferrer\"><code>assert</code>ions</a> may be a good alternative.)</p>\n<p>&quot;Proper&quot; usage of this method would be like below. The method returns the object passed into it and throws a <code>NullPointerException</code> if the object is null. This means that the returned value is always non-null. The method is primarily intended for validating parameters.</p>\n<pre><code>public Foo(Bar bar) {\n    this.bar = Objects.requireNonNull(bar);\n}\n</code></pre>\n<p>It can also be used like an <code>assert</code>ion though since it throws an exception if the object is null. In both uses, a message can be added which will be shown in the exception. Below is using it like an assertion and providing a message.</p>\n<pre><code>Objects.requireNonNull(someobject, &quot;if someobject is null then something is wrong&quot;);\nsomeobject.doCalc();\n</code></pre>\n<p>Generally throwing a specific exception like <code>NullPointerException</code> when a value is null but shouldn't be is favorable to throwing a more general exception like <code>AssertionError</code>. This is the approach the Java library takes; favoring <code>NullPointerException</code> over <code>IllegalArgumentException</code> when an argument is not allowed to be null.</p>\n<p>(1) is a little harder.  If you have no control over the code you're calling then you're stuck.  If null is a valid response, you have to check for it.</p>\n<p>If it's code that you do control, however (and this is often the case), then it's a different story.  Avoid using nulls as a response.  With methods that return collections, it's easy: return empty collections (or arrays) instead of nulls pretty much all the time.</p>\n<p>With non-collections it might be harder.  Consider this as an example: if you have these interfaces:</p>\n<pre><code>public interface Action {\n  void doSomething();\n}\n\npublic interface Parser {\n  Action findAction(String userInput);\n}\n</code></pre>\n<p>where Parser takes raw user input and finds something to do, perhaps if you're implementing a command line interface for something.  Now you might make the contract that it returns null if there's no appropriate action.  That leads the null checking you're talking about.</p>\n<p>An alternative solution is to never return null and instead use the <a href=\"https://en.wikipedia.org/wiki/Null_Object_pattern\" rel=\"noreferrer\">Null Object pattern</a>:</p>\n<pre><code>public class MyParser implements Parser {\n  private static Action DO_NOTHING = new Action() {\n    public void doSomething() { /* do nothing */ }\n  };\n\n  public Action findAction(String userInput) {\n    // ...\n    if ( /* we can't find any actions */ ) {\n      return DO_NOTHING;\n    }\n  }\n}\n</code></pre>\n<p>Compare:</p>\n<pre><code>Parser parser = ParserFactory.getParser();\nif (parser == null) {\n  // now what?\n  // this would be an example of where null isn't (or shouldn't be) a valid response\n}\nAction action = parser.findAction(someInput);\nif (action == null) {\n  // do nothing\n} else {\n  action.doSomething();\n}\n</code></pre>\n<p>to</p>\n<pre><code>ParserFactory.getParser().findAction(someInput).doSomething();\n</code></pre>\n<p>which is a much better design because it leads to more concise code.</p>\n<p>That said, perhaps it is entirely appropriate for the findAction() method to throw an Exception with a meaningful error message -- especially in this case where you are relying on user input.  It would be much better for the findAction method to throw an Exception than for the calling method to blow up with a simple NullPointerException with no explanation.</p>\n<pre><code>try {\n    ParserFactory.getParser().findAction(someInput).doSomething();\n} catch(ActionNotFoundException anfe) {\n    userConsole.err(anfe.getMessage());\n}\n</code></pre>\n<p>Or if you think the try/catch mechanism is too ugly, rather than Do Nothing your default action should provide feedback to the user.</p>\n<pre><code>public Action findAction(final String userInput) {\n    /* Code to return requested Action if found */\n    return new Action() {\n        public void doSomething() {\n            userConsole.err(&quot;Action not found: &quot; + userInput);\n        }\n    }\n}\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 11244,
+      "reputation" : 29606,
+      "user_id" : 21590,
+      "user_type" : "registered",
+      "accept_rate" : 62,
+      "profile_image" : "https://www.gravatar.com/avatar/d21e4f986f5b05d89b0070b37e296a87?s=256&d=identicon&r=PG",
+      "display_name" : "Harry Lime",
+      "link" : "https://stackoverflow.com/users/21590/harry-lime"
+    },
+    "is_accepted" : true,
+    "score" : 2762,
+    "last_activity_date" : 1674177696,
+    "last_edit_date" : 1674177696,
+    "creation_date" : 1227286460,
+    "answer_id" : 309448,
+    "question_id" : 309424,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>A nice way to do this is using <a href=\"http://commons.apache.org/\" rel=\"noreferrer\">Apache Commons</a> <code><a href=\"https://commons.apache.org/proper/commons-io/javadocs/api-release/org/apache/commons/io/IOUtils.html\" rel=\"noreferrer\">IOUtils</a></code> to copy the <code>InputStream</code> into a <code>StringWriter</code>... Something like</p>\n<pre><code>StringWriter writer = new StringWriter();\nIOUtils.copy(inputStream, writer, encoding);\nString theString = writer.toString();\n</code></pre>\n<p>or even</p>\n<pre><code>// NB: does not close inputStream, you'll have to use try-with-resources for that\nString theString = IOUtils.toString(inputStream, encoding);\n</code></pre>\n<p>Alternatively, you could use <code>ByteArrayOutputStream</code> if you don't want to mix your Streams and Writers.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 461945,
+      "reputation" : 33782,
+      "user_id" : 863980,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://www.gravatar.com/avatar/ea08c9063ae1de86e8d576fb569d513a?s=256&d=identicon&r=PG",
+      "display_name" : "vulcan raven",
+      "link" : "https://stackoverflow.com/users/863980/vulcan-raven"
+    },
+    "is_accepted" : false,
+    "score" : 2666,
+    "last_activity_date" : 1704220366,
+    "last_edit_date" : 1704220366,
+    "creation_date" : 1341282330,
+    "answer_id" : 11303693,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>If you are curious about even more optimizations that can be done to this code, consider this:</p>\n<p>Starting with the original loop:</p>\n<pre class=\"lang-cpp prettyprint-override\"><code>for (unsigned i = 0; i &lt; 100000; ++i)\n{\n    for (unsigned j = 0; j &lt; arraySize; ++j)\n    {\n        if (data[j] &gt;= 128)\n            sum += data[j];\n    }\n}\n</code></pre>\n<p>With loop interchange, we can safely change this loop to:</p>\n<pre class=\"lang-cpp prettyprint-override\"><code>for (unsigned j = 0; j &lt; arraySize; ++j)\n{\n    for (unsigned i = 0; i &lt; 100000; ++i)\n    {\n        if (data[j] &gt;= 128)\n            sum += data[j];\n    }\n}\n</code></pre>\n<p>Then, you can see that the <code>if</code> conditional is constant throughout the execution of the <code>i</code> loop, so you can hoist the <code>if</code> out:</p>\n<pre class=\"lang-cpp prettyprint-override\"><code> for (unsigned j = 0; j &lt; arraySize; ++j)\n {\n     if (data[j] &gt;= 128)\n     {\n         for (unsigned i = 0; i &lt; 100000; ++i)\n         {\n             sum += data[j];\n         }\n    }\n}\n</code></pre>\n<p>Then, you see that the inner loop can be collapsed into one single expression, assuming the floating point model allows it (<code>/fp:fast</code> is thrown, for example)</p>\n<pre class=\"lang-cpp prettyprint-override\"><code>for (unsigned j = 0; j &lt; arraySize; ++j)\n{\n    if (data[j] &gt;= 128)\n    {\n        sum += data[j] * 100000;\n    }\n}\n</code></pre>\n<p>That one is 100,000 times faster than before.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 18713,
+      "reputation" : 30983,
+      "user_id" : 43151,
+      "user_type" : "registered",
+      "accept_rate" : 100,
+      "profile_image" : "https://www.gravatar.com/avatar/a0886310289840857f4763f2559b740c?s=256&d=identicon&r=PG",
+      "display_name" : "Pavel Repin",
+      "link" : "https://stackoverflow.com/users/43151/pavel-repin"
+    },
+    "is_accepted" : false,
+    "score" : 2369,
+    "last_activity_date" : 1546684434,
+    "last_edit_date" : 1546684434,
+    "creation_date" : 1301172025,
+    "answer_id" : 5445161,
+    "question_id" : 309424,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>Here's a way using only the standard Java library (note that the stream is not closed, your mileage may vary).</p>\n\n<pre><code>static String convertStreamToString(java.io.InputStream is) {\n    java.util.Scanner s = new java.util.Scanner(is).useDelimiter(\"\\\\A\");\n    return s.hasNext() ? s.next() : \"\";\n}\n</code></pre>\n\n<p>I learned this trick from <a href=\"https://community.oracle.com/blogs/pat/2004/10/23/stupid-scanner-tricks\" rel=\"noreferrer\">\"Stupid Scanner tricks\"</a> article. The reason it works is because <a href=\"http://download.oracle.com/javase/8/docs/api/java/util/Scanner.html\" rel=\"noreferrer\">Scanner</a> iterates over tokens in the stream, and in this case we separate tokens using \"beginning of the input boundary\" (\\A), thus giving us only one token for the entire contents of the stream.</p>\n\n<p><strong>Note, if you need to be specific about the input stream's encoding, you can provide the second argument to <code>Scanner</code> constructor that indicates what character set to use (e.g. \"UTF-8\").</strong></p>\n\n<p>Hat tip goes also to <a href=\"https://stackoverflow.com/users/68127/jacob-gabrielson\">Jacob</a>, who once pointed me to the said article.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 45644,
+      "reputation" : 240921,
+      "user_id" : 134633,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/dc6be45ddcfd038ba5e1e5fca319c7fa?s=256&d=identicon&r=PG",
+      "display_name" : "caf",
+      "link" : "https://stackoverflow.com/users/134633/caf"
+    },
+    "is_accepted" : false,
+    "score" : 2210,
+    "last_activity_date" : 1350588021,
+    "last_edit_date" : 1350588021,
+    "creation_date" : 1350021213,
+    "answer_id" : 12853037,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 3.0",
+    "body" : "<p>No doubt some of us would be interested in ways of identifying code that is problematic for the CPU's branch-predictor. The Valgrind tool <code>cachegrind</code> has a branch-predictor simulator, enabled by using the <code>--branch-sim=yes</code> flag. Running it over the examples in this question, with the number of outer loops reduced to 10000 and compiled with <code>g++</code>, gives these results:</p>\n\n<p><strong>Sorted:</strong></p>\n\n<pre><code>==32551== Branches:        656,645,130  (  656,609,208 cond +    35,922 ind)\n==32551== Mispredicts:         169,556  (      169,095 cond +       461 ind)\n==32551== Mispred rate:            0.0% (          0.0%     +       1.2%   )\n</code></pre>\n\n<p><strong>Unsorted:</strong></p>\n\n<pre><code>==32555== Branches:        655,996,082  (  655,960,160 cond +  35,922 ind)\n==32555== Mispredicts:     164,073,152  (  164,072,692 cond +     460 ind)\n==32555== Mispred rate:           25.0% (         25.0%     +     1.2%   )\n</code></pre>\n\n<p>Drilling down into the line-by-line output produced by <code>cg_annotate</code> we see for the loop in question:</p>\n\n<p><strong>Sorted:</strong></p>\n\n<pre><code>          Bc    Bcm Bi Bim\n      10,001      4  0   0      for (unsigned i = 0; i &lt; 10000; ++i)\n           .      .  .   .      {\n           .      .  .   .          // primary loop\n 327,690,000 10,016  0   0          for (unsigned c = 0; c &lt; arraySize; ++c)\n           .      .  .   .          {\n 327,680,000 10,006  0   0              if (data[c] &gt;= 128)\n           0      0  0   0                  sum += data[c];\n           .      .  .   .          }\n           .      .  .   .      }\n</code></pre>\n\n<p><strong>Unsorted:</strong></p>\n\n<pre><code>          Bc         Bcm Bi Bim\n      10,001           4  0   0      for (unsigned i = 0; i &lt; 10000; ++i)\n           .           .  .   .      {\n           .           .  .   .          // primary loop\n 327,690,000      10,038  0   0          for (unsigned c = 0; c &lt; arraySize; ++c)\n           .           .  .   .          {\n 327,680,000 164,050,007  0   0              if (data[c] &gt;= 128)\n           0           0  0   0                  sum += data[c];\n           .           .  .   .          }\n           .           .  .   .      }\n</code></pre>\n\n<p>This lets you easily identify the problematic line - in the unsorted version the <code>if (data[c] &gt;= 128)</code> line is causing 164,050,007 mispredicted conditional branches (<code>Bcm</code>) under cachegrind's branch-predictor model, whereas it's only causing 10,006 in the sorted version.</p>\n\n<hr>\n\n<p>Alternatively, on Linux you can use the performance counters subsystem to accomplish the same task, but with native performance using CPU counters.</p>\n\n<pre><code>perf stat ./sumtest_sorted\n</code></pre>\n\n<p><strong>Sorted:</strong></p>\n\n<pre><code> Performance counter stats for './sumtest_sorted':\n\n  11808.095776 task-clock                #    0.998 CPUs utilized          \n         1,062 context-switches          #    0.090 K/sec                  \n            14 CPU-migrations            #    0.001 K/sec                  \n           337 page-faults               #    0.029 K/sec                  \n26,487,882,764 cycles                    #    2.243 GHz                    \n41,025,654,322 instructions              #    1.55  insns per cycle        \n 6,558,871,379 branches                  #  555.455 M/sec                  \n       567,204 branch-misses             #    0.01% of all branches        \n\n  11.827228330 seconds time elapsed\n</code></pre>\n\n<p><strong>Unsorted:</strong></p>\n\n<pre><code> Performance counter stats for './sumtest_unsorted':\n\n  28877.954344 task-clock                #    0.998 CPUs utilized          \n         2,584 context-switches          #    0.089 K/sec                  \n            18 CPU-migrations            #    0.001 K/sec                  \n           335 page-faults               #    0.012 K/sec                  \n65,076,127,595 cycles                    #    2.253 GHz                    \n41,032,528,741 instructions              #    0.63  insns per cycle        \n 6,560,579,013 branches                  #  227.183 M/sec                  \n 1,646,394,749 branch-misses             #   25.10% of all branches        \n\n  28.935500947 seconds time elapsed\n</code></pre>\n\n<p>It can also do source code annotation with dissassembly.</p>\n\n<pre><code>perf record -e branch-misses ./sumtest_unsorted\nperf annotate -d sumtest_unsorted\n</code></pre>\n\n\n\n<pre><code> Percent |      Source code &amp; Disassembly of sumtest_unsorted\n------------------------------------------------\n...\n         :                      sum += data[c];\n    0.00 :        400a1a:       mov    -0x14(%rbp),%eax\n   39.97 :        400a1d:       mov    %eax,%eax\n    5.31 :        400a1f:       mov    -0x20040(%rbp,%rax,4),%eax\n    4.60 :        400a26:       cltq   \n    0.00 :        400a28:       add    %rax,-0x30(%rbp)\n...\n</code></pre>\n\n<p>See <a href=\"https://perf.wiki.kernel.org/index.php/Tutorial\" rel=\"noreferrer\">the performance tutorial</a> for more details.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 294022,
+      "reputation" : 118190,
+      "user_id" : 597657,
+      "user_type" : "registered",
+      "accept_rate" : 99,
+      "profile_image" : "https://i.sstatic.net/0h5ec.jpg?s=256",
+      "display_name" : "Eng.Fouad",
+      "link" : "https://stackoverflow.com/users/597657/eng-fouad"
+    },
+    "is_accepted" : false,
+    "community_owned_date" : 1347646975,
+    "score" : 2140,
+    "last_activity_date" : 1751971613,
+    "last_edit_date" : 1751971613,
+    "creation_date" : 1347646975,
+    "answer_id" : 12429953,
+    "question_id" : 40480,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>Java always passes arguments <em>by value</em>, <em>not</em> by reference.</p>\n<hr />\n<p>Let me explain this through <a href=\"https://stackoverflow.com/a/9404727/597657\">an example</a>:</p>\n<pre class=\"lang-java prettyprint-override\"><code>public class Main {\n\n     public static void main(String[] args) {\n          Foo f = new Foo(&quot;f&quot;);\n          changeReference(f); // It won't change the reference!\n          modifyReference(f); // It will modify the object that the reference variable &quot;f&quot; refers to!\n     }\n\n     public static void changeReference(Foo a) {\n          Foo b = new Foo(&quot;b&quot;);\n          a = b;\n     }\n\n     public static void modifyReference(Foo c) {\n          c.setAttribute(&quot;c&quot;);\n     }\n\n}\n</code></pre>\n<p>I will explain this in steps:</p>\n<ol>\n<li><p>Declaring a reference named <code>f</code> of type <code>Foo</code> and assign it a new object of type <code>Foo</code> with an attribute <code>&quot;f&quot;</code>.</p>\n<pre><code>Foo f = new Foo(&quot;f&quot;);\n</code></pre>\n<p><img src=\"https://i.sstatic.net/arXpP.png\" alt=\"enter image description here\" /></p>\n</li>\n<li><p>From the method side, a reference of type <code>Foo</code> with a name <code>a</code> is declared and it's initially assigned <code>null</code>.</p>\n<pre><code>public static void changeReference(Foo a)\n</code></pre>\n<p><img src=\"https://i.sstatic.net/k2LBD.png\" alt=\"enter image description here\" /></p>\n</li>\n<li><p>As you call the method <code>changeReference</code>, the reference <code>a</code> will be assigned the object which is passed as an argument.</p>\n<pre><code>changeReference(f);\n</code></pre>\n<p><img src=\"https://i.sstatic.net/1Ez74.png\" alt=\"Enter image description here\" /></p>\n</li>\n<li><p>Declaring a reference named <code>b</code> of type <code>Foo</code> and assign it a new object of type <code>Foo</code> with an attribute <code>&quot;b&quot;</code>.</p>\n<pre><code>Foo b = new Foo(&quot;b&quot;);\n</code></pre>\n<p><img src=\"https://i.sstatic.net/Krx4N.png\" alt=\"Enter image description here\" /></p>\n</li>\n<li><p><code>a = b</code> makes a new assignment to the reference <code>a</code>, <strong>not</strong> <code>f</code>, of the object whose attribute is <code>&quot;b&quot;</code>.</p>\n<p><img src=\"https://i.sstatic.net/rCluu.png\" alt=\"Enter image description here\" /></p>\n</li>\n<li><p>As you call <code>modifyReference(Foo c)</code> method, a reference <code>c</code> is created and assigned the object with attribute <code>&quot;f&quot;</code>.</p>\n<p><img src=\"https://i.sstatic.net/PRZPg.png\" alt=\"Enter image description here\" /></p>\n</li>\n<li><p><code>c.setAttribute(&quot;c&quot;);</code> will change the attribute of the object that reference <code>c</code> points to it, and it's the same object that reference <code>f</code> points to it.</p>\n<p><img src=\"https://i.sstatic.net/H9Qsf.png\" alt=\"Enter image description here\" /></p>\n</li>\n</ol>\n"
+  }, {
+    "owner" : {
+      "account_id" : 1748119,
+      "reputation" : 22509,
+      "user_id" : 1597833,
+      "user_type" : "registered",
+      "accept_rate" : 76,
+      "profile_image" : "https://www.gravatar.com/avatar/0953d434c345c978e47a9970eceabd36?s=256&d=identicon&r=PG",
+      "display_name" : "meh",
+      "link" : "https://stackoverflow.com/users/1597833/meh"
+    },
+    "is_accepted" : true,
+    "score" : 2013,
+    "last_activity_date" : 1725273063,
+    "last_edit_date" : 1725273063,
+    "creation_date" : 1352882430,
+    "answer_id" : 13375461,
+    "question_id" : 13375357,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<h3>Android R Update:</h3>\n<p>From Android R, this method always returns false. Google says that this is done &quot;to protect goat privacy&quot;:</p>\n<pre><code>/**\n * Used to determine whether the user making this call is subject to\n * teleportations.\n *\n * &lt;p&gt;As of {@link android.os.Build.VERSION_CODES#LOLLIPOP}, this method can\n * now automatically identify goats using advanced goat recognition technology.&lt;/p&gt;\n *\n * &lt;p&gt;As of {@link android.os.Build.VERSION_CODES#R}, this method always returns\n * {@code false} in order to protect goat privacy.&lt;/p&gt;\n *\n * @return Returns whether the user making this call is a goat.\n */\npublic boolean isUserAGoat() {\n    if (mContext.getApplicationInfo().targetSdkVersion &gt;= Build.VERSION_CODES.R) {\n        return false;\n    }\n    return mContext.getPackageManager()\n            .isPackageAvailable(&quot;com.coffeestainstudios.goatsimulator&quot;);\n}\n</code></pre>\n<hr />\n<h3>Previous answer:</h3>\n<p>From their <strong><a href=\"https://android.googlesource.com/platform/frameworks/base/+/android-5.0.0_r6/core/java/android/os/UserManager.java#433\" rel=\"noreferrer\">source</a></strong>, the method used to return <code>false</code> until it was changed in API 21.</p>\n<pre><code>/**\n * Used to determine whether the user making this call is subject to\n * teleportations.\n * @return whether the user making this call is a goat \n */\npublic boolean isUserAGoat() {\n    return false;\n}\n</code></pre>\n<p>It looks like the method has no real use for us as developers. Someone has previously stated that it might be an <strong><a href=\"http://en.wikipedia.org/wiki/Easter_egg_(media)\" rel=\"noreferrer\">Easter egg</a></strong>.</p>\n<p>In API 21, the implementation was changed to check if the game <a href=\"https://play.google.com/store/apps/details?id=com.coffeestainstudios.goatsimulator\" rel=\"noreferrer\">Goat Simulator</a> (<code>com.coffeestainstudios.goatsimulator</code>) was installed.</p>\n<pre><code>/**\n * Used to determine whether the user making this call is subject to\n * teleportations.\n *\n * &lt;p&gt;As of {@link android.os.Build.VERSION_CODES#LOLLIPOP}, this method can\n * now automatically identify goats using advanced goat recognition technology.&lt;/p&gt;\n *\n * @return Returns true if the user making this call is a goat.\n */\npublic boolean isUserAGoat() {\n    return mContext.getPackageManager()\n            .isPackageAvailable(&quot;com.coffeestainstudios.goatsimulator&quot;);\n}\n</code></pre>\n<p>Here is the <a href=\"https://android.googlesource.com/platform/frameworks/base/+/android-5.0.0_r6/core/java/android/os/UserManager.java#442\" rel=\"noreferrer\">source</a> and the <a href=\"https://android.googlesource.com/platform/frameworks/base/+/e4ab16ad98b183afbf7a21ad7314372de41a8b57%5E%21/#F1\" rel=\"noreferrer\">change</a>.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 9193,
+      "reputation" : 347282,
+      "user_id" : 16883,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://www.gravatar.com/avatar/0382297f273df0a544b0c6c2734de096?s=256&d=identicon&r=PG",
+      "display_name" : "Michael Borgwardt",
+      "link" : "https://stackoverflow.com/users/16883/michael-borgwardt"
+    },
+    "is_accepted" : false,
+    "score" : 1753,
+    "last_activity_date" : 1311755931,
+    "creation_date" : 1311755931,
+    "answer_id" : 6841572,
+    "question_id" : 6841333,
+    "content_license" : "CC BY-SA 3.0",
+    "body" : "<p>You've encountered a <a href=\"http://timeanddate.com/worldclock/clockchange.html?n=237&amp;year=1927\" rel=\"noreferrer\">local time discontinuity</a>:</p>\n\n<blockquote>\n  <p>When local standard time was about to reach Sunday, 1. January 1928,\n  00:00:00 clocks were turned backward 0:05:52 hours to Saturday, 31.\n  December 1927, 23:54:08 local standard time instead</p>\n</blockquote>\n\n<p>This is not particularly strange and has happened pretty much everywhere at one time or another as timezones were switched or changed due to political or administrative actions.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 1021317,
+      "reputation" : 31256,
+      "user_id" : 1031591,
+      "user_type" : "registered",
+      "accept_rate" : 71,
+      "profile_image" : "https://i.sstatic.net/s3MiH.jpg?s=256",
+      "display_name" : "atlaste",
+      "link" : "https://stackoverflow.com/users/1031591/atlaste"
+    },
+    "is_accepted" : false,
+    "score" : 1630,
+    "last_activity_date" : 1547614041,
+    "last_edit_date" : 1547614041,
+    "creation_date" : 1366784788,
+    "answer_id" : 16184827,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>I just read up on this question and its answers, and I feel an answer is missing.</p>\n\n<p>A common way to eliminate branch prediction that I've found to work particularly good in managed languages is a table lookup instead of using a branch (although I haven't tested it in this case).</p>\n\n<p>This approach works in general if:</p>\n\n<ol>\n<li>it's a small table and is likely to be cached in the processor, and</li>\n<li>you are running things in a quite tight loop and/or the processor can preload the data.</li>\n</ol>\n\n<p><strong>Background and why</strong></p>\n\n<p>From a processor perspective, your memory is slow. To compensate for the difference in speed, a couple of caches are built into your processor (L1/L2 cache). So imagine that you're doing your nice calculations and figure out that you need a piece of memory. The processor will get its 'load' operation and loads the piece of memory into cache -- and then uses the cache to do the rest of the calculations. Because memory is relatively slow, this 'load' will slow down your program.</p>\n\n<p>Like branch prediction, this was optimized in the Pentium processors: the processor predicts that it needs to load a piece of data and attempts to load that into the cache before the operation actually hits the cache. As we've already seen, branch prediction sometimes goes horribly wrong -- in the worst case scenario you need to go back and actually wait for a memory load, which will take forever (<strong>in other words: failing branch prediction is bad, a memory load after a branch prediction fail is just horrible!</strong>).</p>\n\n<p>Fortunately for us, if the memory access pattern is predictable, the processor will load it in its fast cache and all is well.</p>\n\n<p>The first thing we need to know is what is <em>small</em>? While smaller is generally better, a rule of thumb is to stick to lookup tables that are &lt;= 4096 bytes in size. As an upper limit: if your lookup table is larger than 64K it's probably worth reconsidering.</p>\n\n<p><strong>Constructing a table</strong></p>\n\n<p>So we've figured out that we can create a small table. Next thing to do is get a lookup function in place. Lookup functions are usually small functions that use a couple of basic integer operations (and, or, xor, shift, add, remove and perhaps multiply). You want to have your input translated by the lookup function to some kind of 'unique key' in your table, which then simply gives you the answer of all the work you wanted it to do.</p>\n\n<p>In this case: >= 128 means we can keep the value, &lt; 128 means we get rid of it. The easiest way to do that is by using an 'AND': if we keep it, we AND it with 7FFFFFFF; if we want to get rid of it, we AND it with 0. Notice also that 128 is a power of 2 -- so we can go ahead and make a table of 32768/128 integers and fill it with one zero and a lot of 7FFFFFFFF's.</p>\n\n<p><strong>Managed languages</strong></p>\n\n<p>You might wonder why this works well in managed languages. After all, managed languages check the boundaries of the arrays with a branch to ensure you don't mess up...</p>\n\n<p>Well, not exactly... :-)</p>\n\n<p>There has been quite some work on eliminating this branch for managed languages. For example:</p>\n\n\n\n<pre class=\"lang-cs prettyprint-override\"><code>for (int i = 0; i &lt; array.Length; ++i)\n{\n   // Use array[i]\n}\n</code></pre>\n\n<p>In this case, it's obvious to the compiler that the boundary condition will never be hit. At least the Microsoft JIT compiler (but I expect Java does similar things) will notice this and remove the check altogether. WOW, that means no branch. Similarly, it will deal with other obvious cases.</p>\n\n<p>If you run into trouble with lookups in managed languages -- the key is to add a <code>&amp; 0x[something]FFF</code> to your lookup function to make the boundary check predictable -- and watch it going faster.</p>\n\n<p><strong>The result of this case</strong></p>\n\n<pre class=\"lang-cs prettyprint-override\"><code>// Generate data\nint arraySize = 32768;\nint[] data = new int[arraySize];\n\nRandom random = new Random(0);\nfor (int c = 0; c &lt; arraySize; ++c)\n{\n    data[c] = random.Next(256);\n}\n\n/*To keep the spirit of the code intact, I'll make a separate lookup table\n(I assume we cannot modify 'data' or the number of loops)*/\n\nint[] lookup = new int[256];\n\nfor (int c = 0; c &lt; 256; ++c)\n{\n    lookup[c] = (c &gt;= 128) ? c : 0;\n}\n\n// Test\nDateTime startTime = System.DateTime.Now;\nlong sum = 0;\n\nfor (int i = 0; i &lt; 100000; ++i)\n{\n    // Primary loop\n    for (int j = 0; j &lt; arraySize; ++j)\n    {\n        /* Here you basically want to use simple operations - so no\n        random branches, but things like &amp;, |, *, -, +, etc. are fine. */\n        sum += lookup[data[j]];\n    }\n}\n\nDateTime endTime = System.DateTime.Now;\nConsole.WriteLine(endTime - startTime);\nConsole.WriteLine(\"sum = \" + sum);\nConsole.ReadLine();\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 5426896,
+      "reputation" : 60422,
+      "user_id" : 4318868,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/p6Tpv.jpg?s=256",
+      "display_name" : "Slava Vedenin",
+      "link" : "https://stackoverflow.com/users/4318868/slava-vedenin"
+    },
+    "is_accepted" : false,
+    "score" : 1629,
+    "last_activity_date" : 1565035942,
+    "last_edit_date" : 1565035942,
+    "creation_date" : 1456159049,
+    "answer_id" : 35558955,
+    "question_id" : 46898,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>To summarize the other answers and combine them with what I know, I found 10 main ways to do this (see below). Also, I wrote some performance tests (see results below). For example, if we want to find the sum of all of the keys and values of a map, we can write:</p>\n\n<ol>\n<li><p>Using <strong>iterator</strong> and <strong>Map.Entry</strong></p>\n\n<pre><code>long i = 0;\nIterator&lt;Map.Entry&lt;Integer, Integer&gt;&gt; it = map.entrySet().iterator();\nwhile (it.hasNext()) {\n    Map.Entry&lt;Integer, Integer&gt; pair = it.next();\n    i += pair.getKey() + pair.getValue();\n}\n</code></pre></li>\n<li><p>Using <strong>foreach</strong> and <strong>Map.Entry</strong></p>\n\n<pre><code>long i = 0;\nfor (Map.Entry&lt;Integer, Integer&gt; pair : map.entrySet()) {\n    i += pair.getKey() + pair.getValue();\n}\n</code></pre></li>\n<li><p>Using <strong>forEach</strong> from Java 8</p>\n\n<pre><code>final long[] i = {0};\nmap.forEach((k, v) -&gt; i[0] += k + v);\n</code></pre></li>\n<li><p>Using <strong>keySet</strong> and <strong>foreach</strong></p>\n\n<pre><code>long i = 0;\nfor (Integer key : map.keySet()) {\n    i += key + map.get(key);\n}\n</code></pre></li>\n<li><p>Using <strong>keySet</strong> and <strong>iterator</strong></p>\n\n<pre><code>long i = 0;\nIterator&lt;Integer&gt; itr2 = map.keySet().iterator();\nwhile (itr2.hasNext()) {\n    Integer key = itr2.next();\n    i += key + map.get(key);\n}\n</code></pre></li>\n<li><p>Using <strong>for</strong> and <strong>Map.Entry</strong></p>\n\n<pre><code>long i = 0;\nfor (Iterator&lt;Map.Entry&lt;Integer, Integer&gt;&gt; entries = map.entrySet().iterator(); entries.hasNext(); ) {\n    Map.Entry&lt;Integer, Integer&gt; entry = entries.next();\n    i += entry.getKey() + entry.getValue();\n}\n</code></pre></li>\n<li><p>Using the Java 8 <strong>Stream API</strong></p>\n\n<pre><code>final long[] i = {0};\nmap.entrySet().stream().forEach(e -&gt; i[0] += e.getKey() + e.getValue());\n</code></pre></li>\n<li><p>Using the Java 8 <strong>Stream API parallel</strong></p>\n\n<pre><code>final long[] i = {0};\nmap.entrySet().stream().parallel().forEach(e -&gt; i[0] += e.getKey() + e.getValue());\n</code></pre></li>\n<li><p>Using <strong>IterableMap</strong> of <code>Apache Collections</code></p>\n\n<pre><code>long i = 0;\nMapIterator&lt;Integer, Integer&gt; it = iterableMap.mapIterator();\nwhile (it.hasNext()) {\n    i += it.next() + it.getValue();\n}\n</code></pre></li>\n<li><p>Using <strong>MutableMap</strong> of Eclipse (CS) collections</p>\n\n<pre><code>final long[] i = {0};\nmutableMap.forEachKeyValue((key, value) -&gt; {\n    i[0] += key + value;\n});\n</code></pre></li>\n</ol>\n\n<p><strong>Perfomance tests</strong> (mode = AverageTime, system = Windows&nbsp;8.1 64-bit, Intel i7-4790 3.60 GHz, 16&nbsp;GB)</p>\n\n<ol>\n<li><p>For a small map (100 elements), score 0.308 is the best</p>\n\n<pre><code>Benchmark                          Mode  Cnt  Score    Error  Units\ntest3_UsingForEachAndJava8         avgt  10   0.308 ±  0.021  µs/op\ntest10_UsingEclipseMap             avgt  10   0.309 ±  0.009  µs/op\ntest1_UsingWhileAndMapEntry        avgt  10   0.380 ±  0.014  µs/op\ntest6_UsingForAndIterator          avgt  10   0.387 ±  0.016  µs/op\ntest2_UsingForEachAndMapEntry      avgt  10   0.391 ±  0.023  µs/op\ntest7_UsingJava8StreamApi          avgt  10   0.510 ±  0.014  µs/op\ntest9_UsingApacheIterableMap       avgt  10   0.524 ±  0.008  µs/op\ntest4_UsingKeySetAndForEach        avgt  10   0.816 ±  0.026  µs/op\ntest5_UsingKeySetAndIterator       avgt  10   0.863 ±  0.025  µs/op\ntest8_UsingJava8StreamApiParallel  avgt  10   5.552 ±  0.185  µs/op\n</code></pre></li>\n<li><p>For a map with 10000 elements,  score 37.606 is the best</p>\n\n<pre><code>Benchmark                           Mode   Cnt  Score      Error   Units\ntest10_UsingEclipseMap              avgt   10    37.606 ±   0.790  µs/op\ntest3_UsingForEachAndJava8          avgt   10    50.368 ±   0.887  µs/op\ntest6_UsingForAndIterator           avgt   10    50.332 ±   0.507  µs/op\ntest2_UsingForEachAndMapEntry       avgt   10    51.406 ±   1.032  µs/op\ntest1_UsingWhileAndMapEntry         avgt   10    52.538 ±   2.431  µs/op\ntest7_UsingJava8StreamApi           avgt   10    54.464 ±   0.712  µs/op\ntest4_UsingKeySetAndForEach         avgt   10    79.016 ±  25.345  µs/op\ntest5_UsingKeySetAndIterator        avgt   10    91.105 ±  10.220  µs/op\ntest8_UsingJava8StreamApiParallel   avgt   10   112.511 ±   0.365  µs/op\ntest9_UsingApacheIterableMap        avgt   10   125.714 ±   1.935  µs/op\n</code></pre></li>\n<li><p>For a map with 100000 elements,  score 1184.767 is the best</p>\n\n<pre><code>Benchmark                          Mode   Cnt  Score        Error    Units\ntest1_UsingWhileAndMapEntry        avgt   10   1184.767 ±   332.968  µs/op\ntest10_UsingEclipseMap             avgt   10   1191.735 ±   304.273  µs/op\ntest2_UsingForEachAndMapEntry      avgt   10   1205.815 ±   366.043  µs/op\ntest6_UsingForAndIterator          avgt   10   1206.873 ±   367.272  µs/op\ntest8_UsingJava8StreamApiParallel  avgt   10   1485.895 ±   233.143  µs/op\ntest5_UsingKeySetAndIterator       avgt   10   1540.281 ±   357.497  µs/op\ntest4_UsingKeySetAndForEach        avgt   10   1593.342 ±   294.417  µs/op\ntest3_UsingForEachAndJava8         avgt   10   1666.296 ±   126.443  µs/op\ntest7_UsingJava8StreamApi          avgt   10   1706.676 ±   436.867  µs/op\ntest9_UsingApacheIterableMap       avgt   10   3289.866 ±  1445.564  µs/op\n</code></pre></li>\n</ol>\n\n<p>Graphs (performance tests depending on map size)</p>\n\n<p><a href=\"https://i.sstatic.net/17VGh.png\" rel=\"noreferrer\"><img src=\"https://i.sstatic.net/17VGh.png\" alt=\"Enter image description here\"></a></p>\n\n<p>Table (perfomance tests depending on map size)</p>\n\n<pre><code>          100     600      1100     1600     2100\ntest10    0.333    1.631    2.752    5.937    8.024\ntest3     0.309    1.971    4.147    8.147   10.473\ntest6     0.372    2.190    4.470    8.322   10.531\ntest1     0.405    2.237    4.616    8.645   10.707\ntest2     0.376    2.267    4.809    8.403   10.910\ntest7     0.473    2.448    5.668    9.790   12.125\ntest9     0.565    2.830    5.952   13.220   16.965\ntest4     0.808    5.012    8.813   13.939   17.407\ntest5     0.810    5.104    8.533   14.064   17.422\ntest8     5.173   12.499   17.351   24.671   30.403\n</code></pre>\n\n<p>All tests are on <a href=\"https://github.com/Vedenin/useful-java-links/blob/master/helloworlds/5.0-other-examples/src/main/java/other_examples/IterateThroughHashMapTest.java\" rel=\"noreferrer\">GitHub</a>.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 6046,
+      "reputation" : 16021,
+      "user_id" : 10007,
+      "user_type" : "registered",
+      "accept_rate" : 60,
+      "profile_image" : "https://www.gravatar.com/avatar/55df9d378f930d0f0941c1bbdb69abcb?s=256&d=identicon&r=PG",
+      "display_name" : "TJ_Fischer",
+      "link" : "https://stackoverflow.com/users/10007/tj-fischer"
+    },
+    "is_accepted" : false,
+    "score" : 1519,
+    "last_activity_date" : 1549635214,
+    "last_edit_date" : 1549635214,
+    "creation_date" : 1229106949,
+    "answer_id" : 363732,
+    "question_id" : 363681,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>Note that this approach is more biased and less efficient than a <code>nextInt</code> approach, <a href=\"https://stackoverflow.com/a/738651/360211\">https://stackoverflow.com/a/738651/360211</a></p>\n\n<p>One standard pattern for accomplishing this is:</p>\n\n<pre><code>Min + (int)(Math.random() * ((Max - Min) + 1))\n</code></pre>\n\n<p>The <a href=\"http://en.wikipedia.org/wiki/Java_%28programming_language%29\" rel=\"noreferrer\">Java</a> Math library function Math.random() generates a double value in the range <code>[0,1)</code>. Notice this range does not include the 1.</p>\n\n<p>In order to get a specific range of values first, you need to multiply by the magnitude of the range of values you want covered. </p>\n\n<pre><code>Math.random() * ( Max - Min )\n</code></pre>\n\n<p>This returns a value in the range <code>[0,Max-Min)</code>, where 'Max-Min' is not included.</p>\n\n<p>For example, if you want <code>[5,10)</code>, you need to cover five integer values so you use</p>\n\n<pre><code>Math.random() * 5\n</code></pre>\n\n<p>This would return a value in the range <code>[0,5)</code>, where 5 is not included.</p>\n\n<p>Now you need to shift this range up to the range that you are targeting. You do this by adding the Min value.</p>\n\n<pre><code>Min + (Math.random() * (Max - Min))\n</code></pre>\n\n<p>You now will get a value in the range <code>[Min,Max)</code>. Following our example, that means <code>[5,10)</code>:</p>\n\n<pre><code>5 + (Math.random() * (10 - 5))\n</code></pre>\n\n<p>But, this still doesn't include <code>Max</code> and you are getting a double value. In order to get the <code>Max</code> value included, you need to add 1 to your range parameter <code>(Max - Min)</code> and then truncate the decimal part by casting to an int. This is accomplished via:</p>\n\n<pre><code>Min + (int)(Math.random() * ((Max - Min) + 1))\n</code></pre>\n\n<p>And there you have it. A random integer value in the range <code>[Min,Max]</code>, or per the example <code>[5,10]</code>:</p>\n\n<pre><code>5 + (int)(Math.random() * ((10 - 5) + 1))\n</code></pre>\n"
+  }, {
+    "owner" : {
+      "account_id" : 996825,
+      "reputation" : 17988,
+      "user_id" : 1012551,
+      "user_type" : "registered",
+      "accept_rate" : 92,
+      "profile_image" : "https://www.gravatar.com/avatar/22df608584e3ef466f34afef94f134df?s=256&d=identicon&r=PG",
+      "display_name" : "Saqlain",
+      "link" : "https://stackoverflow.com/users/1012551/saqlain"
+    },
+    "is_accepted" : false,
+    "score" : 1451,
+    "last_activity_date" : 1551265112,
+    "last_edit_date" : 1551265112,
+    "creation_date" : 1360913056,
+    "answer_id" : 14889969,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>As data is distributed between 0 and 255 when the array is sorted, around the first half of the iterations will not enter the <code>if</code>-statement (the <code>if</code> statement is shared below).</p>\n\n<pre><code>if (data[c] &gt;= 128)\n    sum += data[c];\n</code></pre>\n\n<p>The question is: What makes the above statement not execute in certain cases as in case of sorted data? Here comes the \"branch predictor\". A branch predictor is a digital circuit that tries to guess which way a branch (e.g. an <code>if-then-else</code> structure) will go before this is known for sure. The purpose of the branch predictor is to improve the flow in the instruction pipeline. Branch predictors play a critical role in achieving high effective performance!</p>\n\n<p><strong>Let's do some bench marking to understand it better</strong></p>\n\n<p>The performance of an <code>if</code>-statement depends on whether its condition has a predictable pattern. If the condition is always true or always false, the branch prediction logic in the processor will pick up the pattern. On the other hand, if the pattern is unpredictable, the <code>if</code>-statement will be much more expensive.</p>\n\n<p>Let’s measure the performance of this loop with different conditions:</p>\n\n<pre><code>for (int i = 0; i &lt; max; i++)\n    if (condition)\n        sum++;\n</code></pre>\n\n<p>Here are the timings of the loop with different true-false patterns:</p>\n\n<pre><code>Condition                Pattern             Time (ms)\n-------------------------------------------------------\n(i &amp; 0×80000000) == 0    T repeated          322\n\n(i &amp; 0xffffffff) == 0    F repeated          276\n\n(i &amp; 1) == 0             TF alternating      760\n\n(i &amp; 3) == 0             TFFFTFFF…           513\n\n(i &amp; 2) == 0             TTFFTTFF…           1675\n\n(i &amp; 4) == 0             TTTTFFFFTTTTFFFF…   1275\n\n(i &amp; 8) == 0             8T 8F 8T 8F …       752\n\n(i &amp; 16) == 0            16T 16F 16T 16F …   490\n</code></pre>\n\n<p>A “<strong>bad</strong>” true-false pattern can make an <code>if</code>-statement up to six times slower than a “<strong>good</strong>” pattern! Of course, which pattern is good and which is bad depends on the exact instructions generated by the compiler and on the specific processor.</p>\n\n<p>So there is no doubt about the impact of branch prediction on performance!</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 55732,
+      "reputation" : 77133,
+      "user_id" : 166949,
+      "user_type" : "registered",
+      "accept_rate" : 90,
+      "profile_image" : "https://i.sstatic.net/tIFie.png?s=256",
+      "display_name" : "steveha",
+      "link" : "https://stackoverflow.com/users/166949/steveha"
+    },
+    "is_accepted" : false,
+    "score" : 1386,
+    "last_activity_date" : 1611741816,
+    "last_edit_date" : 1611741816,
+    "creation_date" : 1374481770,
+    "answer_id" : 17782979,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>One way to avoid branch prediction errors is to build a lookup table, and index it using the data.  Stefan de Bruijn discussed that in his answer.</p>\n<p>But in this case, we know values are in the range [0, 255] and we only care about values &gt;= 128.  That means we can easily extract a single bit that will tell us whether we want a value or not: by shifting the data to the right 7 bits, we are left with a 0 bit or a 1 bit, and we only want to add the value when we have a 1 bit.  Let's call this bit the &quot;decision bit&quot;.</p>\n<p>By using the 0/1 value of the decision bit as an index into an array, we can make code that will be equally fast whether the data is sorted or not sorted.  Our code will always add a value, but when the decision bit is 0, we will add the value somewhere we don't care about.  Here's the code:</p>\n<pre><code>// Test\nclock_t start = clock();\nlong long a[] = {0, 0};\nlong long sum;\n\nfor (unsigned i = 0; i &lt; 100000; ++i)\n{\n    // Primary loop\n    for (unsigned c = 0; c &lt; arraySize; ++c)\n    {\n        int j = (data[c] &gt;&gt; 7);\n        a[j] += data[c];\n    }\n}\n\ndouble elapsedTime = static_cast&lt;double&gt;(clock() - start) / CLOCKS_PER_SEC;\nsum = a[1];\n</code></pre>\n<p>This code wastes half of the adds but never has a branch prediction failure.  It's tremendously faster on random data than the version with an actual if statement.</p>\n<p>But in my testing, an explicit lookup table was slightly faster than this, probably because indexing into a lookup table was slightly faster than bit shifting.  This shows how my code sets up and uses the lookup table (unimaginatively called <code>lut</code> for &quot;LookUp Table&quot; in the code).  Here's the C++ code:</p>\n<pre><code>// Declare and then fill in the lookup table\nint lut[256];\nfor (unsigned c = 0; c &lt; 256; ++c)\n    lut[c] = (c &gt;= 128) ? c : 0;\n\n// Use the lookup table after it is built\nfor (unsigned i = 0; i &lt; 100000; ++i)\n{\n    // Primary loop\n    for (unsigned c = 0; c &lt; arraySize; ++c)\n    {\n        sum += lut[data[c]];\n    }\n}\n</code></pre>\n<p>In this case, the lookup table was only 256 bytes, so it fits nicely in a cache and all was fast.  This technique wouldn't work well if the data was 24-bit values and we only wanted half of them... the lookup table would be far too big to be practical.  On the other hand, we can combine the two techniques shown above: first shift the bits over, then index a lookup table.  For a 24-bit value that we only want the top half value, we could potentially shift the data right by 12 bits, and be left with a 12-bit value for a table index.  A 12-bit table index implies a table of 4096 values, which might be practical.</p>\n<p>The technique of indexing into an array, instead of using an <code>if</code> statement, can be used for deciding which pointer to use.  I saw a library that implemented binary trees, and instead of having two named pointers (<code>pLeft</code> and <code>pRight</code> or whatever) had a length-2 array of pointers and used the &quot;decision bit&quot; technique to decide which one to follow.  For example, instead of:</p>\n<pre><code>if (x &lt; node-&gt;value)\n    node = node-&gt;pLeft;\nelse\n    node = node-&gt;pRight;\n</code></pre>\n<p>this library would do something like:</p>\n<pre><code>i = (x &lt; node-&gt;value);\nnode = node-&gt;link[i];\n</code></pre>\n<p>Here's a link to this code: <a href=\"https://web.archive.org/web/20190207151651/https://www.eternallyconfuzzled.com/tuts/datastructures/jsw_tut_rbtree.aspx\" rel=\"noreferrer\">Red Black Trees</a>, <em>Eternally Confuzzled</em></p>\n"
+  }, {
+    "owner" : {
+      "user_type" : "does_not_exist",
+      "display_name" : "user1196549"
+    },
+    "is_accepted" : false,
+    "score" : 1243,
+    "last_activity_date" : 1557574272,
+    "last_edit_date" : 1557574272,
+    "creation_date" : 1374652659,
+    "answer_id" : 17828251,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>In the sorted case, you can do better than relying on successful branch prediction or any branchless comparison trick: completely remove the branch.</p>\n\n<p>Indeed, the array is partitioned in a contiguous zone with <code>data &lt; 128</code> and another with <code>data &gt;= 128</code>. So you should find the partition point with a <a href=\"https://en.wikipedia.org/wiki/Dichotomic_search\" rel=\"noreferrer\">dichotomic search</a> (using <code>Lg(arraySize) = 15</code> comparisons), then do a straight accumulation from that point.</p>\n\n<p>Something like (unchecked)</p>\n\n<pre><code>int i= 0, j, k= arraySize;\nwhile (i &lt; k)\n{\n  j= (i + k) &gt;&gt; 1;\n  if (data[j] &gt;= 128)\n    k= j;\n  else\n    i= j;\n}\nsum= 0;\nfor (; i &lt; arraySize; i++)\n  sum+= data[i];\n</code></pre>\n\n<p>or, slightly more obfuscated</p>\n\n<pre><code>int i, k, j= (i + k) &gt;&gt; 1;\nfor (i= 0, k= arraySize; i &lt; k; (data[j] &gt;= 128 ? k : i)= j)\n  j= (i + k) &gt;&gt; 1;\nfor (sum= 0; i &lt; arraySize; i++)\n  sum+= data[i];\n</code></pre>\n\n<p>A yet faster approach, that gives an <strong>approximate</strong> solution for both sorted or unsorted is: <code>sum= 3137536;</code> (assuming a truly uniform distribution, 16384 samples with expected value 191.5) <strong>:-)</strong></p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 1413944,
+      "reputation" : 61149,
+      "user_id" : 1339987,
+      "user_type" : "registered",
+      "accept_rate" : 54,
+      "profile_image" : "https://www.gravatar.com/avatar/76aa5ba88e0d95b6480113239fe50008?s=256&d=identicon&r=PG",
+      "display_name" : "djechlin",
+      "link" : "https://stackoverflow.com/users/1339987/djechlin"
+    },
+    "is_accepted" : false,
+    "score" : 1047,
+    "last_activity_date" : 1518470024,
+    "last_edit_date" : 1518470024,
+    "creation_date" : 1352904449,
+    "answer_id" : 13381101,
+    "question_id" : 13375357,
+    "content_license" : "CC BY-SA 3.0",
+    "body" : "<p>I don't know if this was \"the\" official use case, but the following produces a warning in Java (that can further produce compile errors if mixed with <code>return</code> statements, leading to unreachable code):</p>\n\n<pre><code>while (1 == 2) { // Note that \"if\" is treated differently\n    System.out.println(\"Unreachable code\");\n}\n</code></pre>\n\n<p>However this is legal:</p>\n\n<pre><code>while (isUserAGoat()) {\n    System.out.println(\"Unreachable but determined at runtime, not at compile time\");\n}\n</code></pre>\n\n<p>So I often find myself writing a silly utility method for the quickest way to dummy out a code block, then in completing debugging find all calls to it, so provided the implementation doesn't change this can be used for that.</p>\n\n<p><a href=\"http://docs.oracle.com/javase/specs/jls/se7/html/jls-14.html#jls-14.21\" rel=\"noreferrer\">JLS</a> points out <code>if (false)</code> does not trigger \"unreachable code\" for the specific reason that this would break support for debug flags, i.e., basically this use case (h/t @auselen). (<code>static final boolean DEBUG = false;</code> for instance).</p>\n\n<p>I replaced <code>while</code> for <code>if</code>, producing a more obscure use case. I <em>believe</em> you can trip up your IDE, like Eclipse, with this behavior, but this edit is 4 years into the future, and I don't have an Eclipse environment to play with.</p>\n"
+  }, {
+    "owner" : {
+      "account_id" : 1786345,
+      "reputation" : 11302,
+      "user_id" : 1627741,
+      "user_type" : "registered",
+      "accept_rate" : 53,
+      "profile_image" : "https://i.sstatic.net/YXvvz.jpg?s=256",
+      "display_name" : "Harsh Sharma",
+      "link" : "https://stackoverflow.com/users/1627741/harsh-sharma"
+    },
+    "is_accepted" : false,
+    "score" : 1047,
+    "last_activity_date" : 1650591088,
+    "last_edit_date" : 1650591088,
+    "creation_date" : 1435937752,
+    "answer_id" : 31210295,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>The above behavior is happening because of Branch prediction.</p>\n<p>To understand branch prediction one must first understand an <strong>Instruction Pipeline.</strong></p>\n<p>The the steps of running an instruction can be overlapped with the sequence of steps of running the previous and next instruction, so that different steps can be executed concurrently in parallel. This technique is known as instruction pipelining and is used to increase throughput in modern processors. To understand this better please see this <a href=\"https://en.wikipedia.org/wiki/Pipeline_(computing)#Concept_and_motivation\" rel=\"noreferrer\">example on Wikipedia</a>.</p>\n<p>Generally, modern processors have quite long (and wide) pipelines, so many instruction can be in flight.  See <a href=\"https://www.lighterra.com/papers/modernmicroprocessors/\" rel=\"noreferrer\">Modern Microprocessors\nA 90-Minute Guide!</a> which starts by introducing basic in-order pipelining and goes from there.</p>\n<p>But for ease <strong>let's consider a simple in-order pipeline with these 4 steps only.</strong><br />\n(Like a <a href=\"https://en.wikipedia.org/wiki/Classic_RISC_pipeline\" rel=\"noreferrer\">classic 5-stage RISC</a>, but omitting a separate MEM stage.)</p>\n<ol>\n<li>IF -- Fetch the instruction from memory</li>\n<li>ID -- Decode the instruction</li>\n<li>EX -- Execute the instruction</li>\n<li>WB -- Write back to CPU register</li>\n</ol>\n<p><strong>4-stage pipeline in general for 2 instructions.</strong><br />\n<img src=\"https://i.sstatic.net/PqBBR.png\" alt=\"4-stage pipeline in general\" /></p>\n<p>Moving back to the above question let's consider the following instructions:</p>\n<pre><code>                        A) if (data[c] &gt;= 128)\n                                /\\\n                               /  \\\n                              /    \\\n                        true /      \\ false\n                            /        \\\n                           /          \\\n                          /            \\\n                         /              \\\n              B) sum += data[c];          C) for loop or print().\n</code></pre>\n<p>Without branch prediction, the following would occur:</p>\n<p>To execute instruction B or instruction C the processor will have to wait (<em>stall</em>) till the instruction A leaves the EX stage in the pipeline, as the decision to go to instruction B or instruction C depends on the result of instruction A.  (i.e. where to fetch from next.) So the pipeline will look like this:</p>\n<p><em><strong>Without prediction: when <code>if</code> condition is true:</strong></em>\n<img src=\"https://i.sstatic.net/0H4gP.png\" alt=\"enter image description here\" /></p>\n<p><em><strong>Without prediction: When <code>if</code> condition is false:</strong></em>\n<img src=\"https://i.sstatic.net/APpca.png\" alt=\"enter image description here\" /></p>\n<p>As a result of waiting for the result of instruction A, the total CPU cycles spent in the above case (without branch prediction; for both true and false) is 7.</p>\n<p><strong>So what is branch prediction?</strong></p>\n<p>Branch predictor will try to guess which way a branch (an if-then-else structure) will go before this is known for sure. It will not wait for the instruction A to reach the EX stage of the pipeline, but it will guess the decision and go to that instruction (B or C in case of our example).</p>\n<p><em><strong>In case of a correct guess, the pipeline looks something like this:</strong></em>\n<img src=\"https://i.sstatic.net/ZYUbs.png\" alt=\"enter image description here\" /></p>\n<p>If it is later detected that the guess was wrong then the partially executed instructions are discarded and the pipeline starts over with the correct branch, incurring a delay.\nThe time that is wasted in case of a branch misprediction is equal to the number of stages in the pipeline from the fetch stage to the execute stage. Modern microprocessors tend to have quite long pipelines so that the misprediction delay is between 10 and 20 clock cycles. The longer the pipeline the greater the need for a good <a href=\"https://en.wikipedia.org/wiki/Branch_predictor\" rel=\"noreferrer\">branch predictor</a>.</p>\n<p>In the OP's code, the first time when the conditional, the branch predictor does not have any information to base up prediction, so the first time it will randomly choose the next instruction. (Or fall back to <em>static</em> prediction, typically forward not-taken, backward taken).  Later in the for loop, it can base the prediction on the history.\nFor an array sorted in ascending order, there are three possibilities:</p>\n<ol>\n<li> All the elements are less than 128\n<li> All the elements are greater than 128\n<li> Some starting new elements are less than 128 and later it become greater than 128\n</ol>\n<p>Let us assume that the predictor will always assume the true branch on the first run.</p>\n<p>So in the first case, it will always take the true branch since historically all its predictions are correct.\nIn the 2nd case, initially it will predict wrong, but after a few iterations, it will predict correctly.\nIn the 3rd case, it will initially predict correctly till the elements are less than 128. After which it will fail for some time and the correct itself when it sees branch prediction failure in history.</p>\n<p>In all these cases the failure will be too less in number and as a result, only a few times it will need to discard the partially executed instructions and start over with the correct branch, resulting in fewer CPU cycles.</p>\n<p>But in case of a random unsorted array, the prediction will need to discard the partially executed instructions and start over with the correct branch most of the time and result in more CPU cycles compared to the sorted array.</p>\n<hr />\n<p>Further reading:</p>\n<ul>\n<li><a href=\"https://www.lighterra.com/papers/modernmicroprocessors/\" rel=\"noreferrer\">Modern Microprocessors\nA 90-Minute Guide!</a></li>\n<li><a href=\"https://danluu.com/branch-prediction/\" rel=\"noreferrer\">Dan Luu's article on branch prediction</a> (which covers older branch predictors, not modern IT-TAGE or Perceptron)</li>\n<li><a href=\"https://en.wikipedia.org/wiki/Branch_predictor\" rel=\"noreferrer\">https://en.wikipedia.org/wiki/Branch_predictor</a></li>\n<li><a href=\"https://hal.inria.fr/hal-01100647/document\" rel=\"noreferrer\">Branch Prediction and the Performance of Interpreters -\nDon’t Trust Folklore</a> - 2015 paper showing how well Intel's Haswell does at predicting the indirect branch of a Python interpreter's main loop (historically problematic due to a non-simple pattern), vs. earlier CPUs which didn't use IT-TAGE.  (They don't help with this fully random case, though.  Still 50% mispredict rate for the if inside the loop on a Skylake CPU when the source is compiled to branch asm.)</li>\n<li><a href=\"https://xania.org/201602/bpu-part-one\" rel=\"noreferrer\">Static branch prediction on newer Intel processors</a> - what CPUs actually do when running a branch instruction that doesn't have a dynamic prediction available.  Historically, forward not-taken (like an <code>if</code> or <code>break</code>), backward taken (like a loop) has been used because it's better than nothing.  Laying out code so the fast path / common case minimizes taken branches is good for I-cache density as well as static prediction, so compilers already do that.  (That's the <a href=\"https://stackoverflow.com/questions/1851299/is-it-possible-to-tell-the-branch-predictor-how-likely-it-is-to-follow-the-branc\">real effect</a> of <code>likely</code> / <code>unlikely</code> hints in C source, not actually hinting the hardware branch prediction in most CPU, except maybe via static prediction.)</li>\n</ul>\n"
+  }, {
+    "owner" : {
+      "account_id" : 4938,
+      "reputation" : 70417,
+      "user_id" : 7671,
+      "user_type" : "registered",
+      "accept_rate" : 70,
+      "profile_image" : "https://i.sstatic.net/2Dzas.jpg?s=256",
+      "display_name" : "Alex Miller",
+      "link" : "https://stackoverflow.com/users/7671/alex-miller"
+    },
+    "is_accepted" : false,
+    "score" : 1013,
+    "last_activity_date" : 1415370122,
+    "last_edit_date" : 1415370122,
+    "creation_date" : 1222875546,
+    "answer_id" : 158269,
+    "question_id" : 157944,
+    "content_license" : "CC BY-SA 3.0",
+    "body" : "<p>Given:</p>\n\n<pre><code>Element[] array = new Element[] { new Element(1), new Element(2), new Element(3) };\n</code></pre>\n\n<p>The simplest answer is to do:</p>\n\n<pre><code>List&lt;Element&gt; list = Arrays.asList(array);\n</code></pre>\n\n<p>This will work fine.  But some caveats:</p>\n\n<ol>\n<li>The list returned from asList has <strong>fixed size</strong>.  So, if you want to be able to add or remove elements from the returned list in your code, you'll need to wrap it in a new <code>ArrayList</code>.  Otherwise you'll get an <code>UnsupportedOperationException</code>.</li>\n<li>The list returned from <code>asList()</code> is backed by the original array.  If you modify the original array, the list will be modified as well.  This may be surprising. </li>\n</ol>\n"
+  }, {
+    "owner" : {
+      "account_id" : 4991025,
+      "reputation" : 16169,
+      "user_id" : 4013258,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/e865f13f21d7a46668ee25724b66fed3?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Surt",
+      "link" : "https://stackoverflow.com/users/4013258/surt"
+    },
+    "is_accepted" : false,
+    "score" : 919,
+    "last_activity_date" : 1485862773,
+    "last_edit_date" : 1485862773,
+    "creation_date" : 1444597518,
+    "answer_id" : 33070112,
+    "question_id" : 11227809,
+    "content_license" : "CC BY-SA 3.0",
+    "body" : "<p>An official answer would be from</p>\n\n<ol>\n<li><a href=\"https://software.intel.com/en-us/articles/avoiding-the-cost-of-branch-misprediction\" rel=\"noreferrer\">Intel - Avoiding the Cost of Branch Misprediction</a></li>\n<li><a href=\"https://software.intel.com/en-us/articles/branch-and-loop-reorganization-to-prevent-mispredicts\" rel=\"noreferrer\">Intel - Branch and Loop Reorganization to Prevent Mispredicts</a></li>\n<li><a href=\"https://scholar.google.com/scholar?q=branch%20prediction%20computer%20architecture&amp;hl=da&amp;as_sdt=0&amp;as_vis=1&amp;oi=scholart\" rel=\"noreferrer\">Scientific papers - branch prediction computer architecture</a></li>\n<li>Books: J.L. Hennessy, D.A. Patterson: Computer architecture: a quantitative approach</li>\n<li>Articles in scientific publications: T.Y. Yeh, Y.N. Patt made a lot of these on branch predictions.</li>\n</ol>\n\n<p>You can also see from this lovely <a href=\"https://en.wikipedia.org/wiki/Branch_predictor#/media/File:Branch_prediction_2bit_saturating_counter-dia.svg\" rel=\"noreferrer\">diagram</a> why the branch predictor gets confused.</p>\n\n<p><a href=\"https://i.sstatic.net/pBMV2.png\" rel=\"noreferrer\"><img src=\"https://i.sstatic.net/pBMV2.png\" alt=\"2-bit state diagram\"></a></p>\n\n<p>Each element in the original code is a random value</p>\n\n<pre><code>data[c] = std::rand() % 256;\n</code></pre>\n\n<p>so the predictor will change sides as the <code>std::rand()</code> blow.</p>\n\n<p>On the other hand, once it's sorted, the predictor will first move into a state of strongly not taken and when the values change to the high value the predictor will in three runs through change all the way from strongly not taken to strongly taken.</p>\n\n<hr>\n"
+  }, {
+    "owner" : {
+      "account_id" : 15204,
+      "reputation" : 10259,
+      "user_id" : 31892,
+      "user_type" : "registered",
+      "accept_rate" : 78,
+      "profile_image" : "https://www.gravatar.com/avatar/22aa27d8821b495e095f79dd331ef3d4?s=256&d=identicon&r=PG",
+      "display_name" : "Chinnery",
+      "link" : "https://stackoverflow.com/users/31892/chinnery"
+    },
+    "is_accepted" : false,
+    "score" : 894,
+    "last_activity_date" : 1718561525,
+    "last_edit_date" : 1718561525,
+    "creation_date" : 1228767222,
+    "answer_id" : 350723,
+    "question_id" : 309424,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "<p>Apache Commons allows:</p>\n<pre><code>String myString = IOUtils.toString(myInputStream, &quot;UTF-8&quot;);\n</code></pre>\n<p>Of course, you could choose other character encodings besides UTF-8.</p>\n<p>Note: From Java versions 1.7 and upwards, you can use <code>StandardCharsets</code> class for charsets instead of hardcoding as <code>&quot;UTF-8&quot;</code>.(ex: <code>StandardCharsets.UTF_8</code>)</p>\n<p>Also see: (<a href=\"http://commons.apache.org/proper/commons-io/javadocs/api-2.4/org/apache/commons/io/IOUtils.html#toString%28java.io.InputStream,%20java.lang.String\" rel=\"nofollow noreferrer\">documentation</a>)</p>\n"
+  } ],
+  "has_more" : true,
+  "quota_max" : 10000,
+  "quota_remaining" : 9984
+}

@@ -1,0 +1,659 @@
+{
+  "items" : [ {
+    "owner" : {
+      "account_id" : 9983336,
+      "reputation" : 5256,
+      "user_id" : 7769052,
+      "user_type" : "registered",
+      "accept_rate" : 75,
+      "profile_image" : "https://i.sstatic.net/t94zs.jpg?s=256",
+      "display_name" : "camilajenny",
+      "link" : "https://stackoverflow.com/users/7769052/camilajenny"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1758888898,
+    "post_id" : 271526,
+    "comment_id" : 140761751,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "This question should be deleted, there&#39;s no single good answer. It&#39;s too broad, it&#39;s not about a specific debugging problem, it doesn&#39;t fit on this site."
+  }, {
+    "owner" : {
+      "account_id" : 44071232,
+      "reputation" : 1,
+      "user_id" : 31562054,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/EayYsrZP.png?s=256",
+      "display_name" : "Pvz fusion",
+      "link" : "https://stackoverflow.com/users/31562054/pvz-fusion"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1758795551,
+    "post_id" : 363681,
+    "comment_id" : 140759027,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Use ThreadLocalRandom.current().nextInt(min, max + 1); in Java to get random integers in a range. This method is simple, reliable, and often used in games like <a href=\"https://pvzfusionapk.pro/\" rel=\"nofollow noreferrer\">pvzfusionapk.pro</a>."
+  }, {
+    "owner" : {
+      "account_id" : 4987147,
+      "reputation" : 14696,
+      "user_id" : 4010391,
+      "user_type" : "registered",
+      "accept_rate" : 92,
+      "profile_image" : "https://i.sstatic.net/NgRol.jpg?s=256",
+      "display_name" : "Travis",
+      "link" : "https://stackoverflow.com/users/4010391/travis"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1758730845,
+    "post_id" : 6841333,
+    "comment_id" : 140757449,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "When it comes to questions around &quot;why is there this weird time anomaly&quot;, I find that the answer to always be the best application for the saying &quot;it&#39;s not a bug, it&#39;s a feature&quot;."
+  }, {
+    "owner" : {
+      "account_id" : 529122,
+      "reputation" : 164963,
+      "user_id" : 415448,
+      "user_type" : "registered",
+      "accept_rate" : 33,
+      "profile_image" : "https://i.sstatic.net/P2vVZ.png?s=256",
+      "display_name" : "Michael Kay",
+      "link" : "https://stackoverflow.com/users/415448/michael-kay"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1713515423,
+    "post_id" : 271526,
+    "comment_id" : 138133021,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "I&#39;m a bit of a contrarian here. If an object has properties that can legitimately have no value, I find that using &quot;null&quot; to represent this fact is as good as any other representation I have found. The fact that you get an NPE if you fail to check for this legitimate state is a good thing; if you instead use something like an enumeration value of UNKNOWN, then a failure to check for it will go unnoticed."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 7428050,
+      "reputation" : 914,
+      "user_id" : 5649936,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/661e20ca103f2357646581face8787be?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Šimon Hrabec",
+      "link" : "https://stackoverflow.com/users/5649936/%c5%a0imon-hrabec"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1711712583,
+    "post_id" : 11227809,
+    "comment_id" : 137941445,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@ŠimonHrabec: Too bad we can&#39;t edit comments.  Mods can, I think; perhaps they&#39;d be willing to do it manually for you since this is a bit of a special case: the first (non-deleted) comment on SO&#39;s highest-voted question.  It would be a shame to delete the comment over that one inaccuracy because that wasn&#39;t its main point."
+  }, {
+    "owner" : {
+      "account_id" : 7428050,
+      "reputation" : 914,
+      "user_id" : 5649936,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/661e20ca103f2357646581face8787be?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Šimon Hrabec",
+      "link" : "https://stackoverflow.com/users/5649936/%c5%a0imon-hrabec"
+    },
+    "reply_to_user" : {
+      "account_id" : 3324724,
+      "reputation" : 1244,
+      "user_id" : 2795046,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/37d94521e300f95ac572db4b39ed05d5?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "nicolai",
+      "link" : "https://stackoverflow.com/users/2795046/nicolai"
+    },
+    "edited" : false,
+    "score" : 2,
+    "creation_date" : 1711706358,
+    "post_id" : 11227809,
+    "comment_id" : 137940732,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@nicolai Thanks for pointing that out. No idea why I wrote that."
+  }, {
+    "owner" : {
+      "account_id" : 448670,
+      "reputation" : 1612,
+      "user_id" : 843001,
+      "user_type" : "registered",
+      "accept_rate" : 47,
+      "profile_image" : "https://i.sstatic.net/8jFUY4TK.jpg?s=256",
+      "display_name" : "Duna",
+      "link" : "https://stackoverflow.com/users/843001/duna"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1710400948,
+    "post_id" : 46898,
+    "comment_id" : 137791076,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "The easiest way is:         <code>hashMap.map {Log.d(TAG, it.key, it.value)}</code>"
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 321401,
+      "reputation" : 19130,
+      "user_id" : 640205,
+      "user_type" : "registered",
+      "accept_rate" : 94,
+      "profile_image" : "https://www.gravatar.com/avatar/54b992871265b6997dd53e13bb6fdc67?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "JustBeingHelpful",
+      "link" : "https://stackoverflow.com/users/640205/justbeinghelpful"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1708378290,
+    "post_id" : 11227809,
+    "comment_id" : 137550814,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@JustBeingHelpful: Good video about sorting algorithms, but unrelated to this question.  It doesn&#39;t mention branch prediction, and most CPUs in 1980 didn&#39;t even do dynamic branch prediction.  <a href=\"https://en.wikipedia.org/wiki/Branch_predictor#History\" rel=\"nofollow noreferrer\">en.wikipedia.org/wiki/Branch_predictor#History</a> .  If your data isn&#39;t already sorted, the way to make this loop fast is branchless code.  Running an actual sort and then this loop would be much slower. The majority of sorting algorithms involve some data-dependent branching and/or multiple passes over the data.  (SIMD sorts can be pretty good, but vectorizing this loop like clang is far better.)"
+  }, {
+    "owner" : {
+      "account_id" : 3324724,
+      "reputation" : 1244,
+      "user_id" : 2795046,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/37d94521e300f95ac572db4b39ed05d5?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "nicolai",
+      "link" : "https://stackoverflow.com/users/2795046/nicolai"
+    },
+    "reply_to_user" : {
+      "account_id" : 7428050,
+      "reputation" : 914,
+      "user_id" : 5649936,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/661e20ca103f2357646581face8787be?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Šimon Hrabec",
+      "link" : "https://stackoverflow.com/users/5649936/%c5%a0imon-hrabec"
+    },
+    "edited" : false,
+    "score" : 4,
+    "creation_date" : 1705156332,
+    "post_id" : 11227809,
+    "comment_id" : 137176305,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@ŠimonHrabec, why, there is <code>std::partition</code> which partitions by predicate."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 1426955,
+      "reputation" : 9448,
+      "user_id" : 1350209,
+      "user_type" : "registered",
+      "accept_rate" : 100,
+      "profile_image" : "https://www.gravatar.com/avatar/bd2f0eb2365d2a1fcd6f4eb4d40366b1?s=256&d=identicon&r=PG",
+      "display_name" : "Cole Tobin",
+      "link" : "https://stackoverflow.com/users/1350209/cole-tobin"
+    },
+    "edited" : false,
+    "score" : 3,
+    "creation_date" : 1701123253,
+    "post_id" : 11227809,
+    "comment_id" : 136733980,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@ColeTobin : You&#39;re right that the underlying effect isn&#39;t language-specific, but it is more pronounced in language implementations that AoT or JIT compile to native machine code.  An interpreter would still have some unpredictable data-dependent branching, but lots of other (predictable) branching to dispatch handler functions.  And only happens when the optimizer chooses not to make branchless (scalar or vector) asm.  There aren&#39;t 2 other tags we really want, so I&#39;m going to roll back to re-add the [c++][java] tags.  They don&#39;t make the question worse, and the examples use them."
+  }, {
+    "owner" : {
+      "account_id" : 4417874,
+      "reputation" : 559,
+      "user_id" : 3598880,
+      "user_type" : "registered",
+      "accept_rate" : 38,
+      "profile_image" : "https://www.gravatar.com/avatar/6652a1a1dd3b4a9c556396db0bae0173?s=256&d=identicon&r=PG",
+      "display_name" : "barbariania",
+      "link" : "https://stackoverflow.com/users/3598880/barbariania"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1695820814,
+    "post_id" : 271526,
+    "comment_id" : 136075151,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Probably you were looking for  <code>Optional.ofNullable(x).ifPresent(xV -&gt; xV.someAction());</code>"
+  }, {
+    "owner" : {
+      "account_id" : 20817839,
+      "reputation" : 743,
+      "user_id" : 15290244,
+      "user_type" : "registered",
+      "profile_image" : "https://lh4.googleusercontent.com/-UCq_mn5goSk/AAAAAAAAAAI/AAAAAAAAAAA/AMZuucnCUbt2jXcU9Mx1fT_H63erJb7svw/s96-c/s256-rj/photo.jpg",
+      "display_name" : "Simao Gomes Viana",
+      "link" : "https://stackoverflow.com/users/15290244/simao-gomes-viana"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1690558505,
+    "post_id" : 271526,
+    "comment_id" : 135375335,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Use Optionals or Kotlin"
+  }, {
+    "owner" : {
+      "account_id" : 213468,
+      "reputation" : 110277,
+      "user_id" : 466862,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/d873f397779db38cd510d9ee5416fd43?s=256&d=identicon&r=PG",
+      "display_name" : "Mark Rotteveel",
+      "link" : "https://stackoverflow.com/users/466862/mark-rotteveel"
+    },
+    "reply_to_user" : {
+      "account_id" : 6333754,
+      "reputation" : 2223,
+      "user_id" : 4917881,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/58ccd2073f7be170038eeda1016e4b57?s=256&d=identicon&r=PG",
+      "display_name" : "aventurin",
+      "link" : "https://stackoverflow.com/users/4917881/aventurin"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1683972841,
+    "post_id" : 40471,
+    "comment_id" : 134450752,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@aventurin I wonder if that is still the case now biased locking is disabled since Java 15."
+  }, {
+    "owner" : {
+      "account_id" : 204515,
+      "reputation" : 12169,
+      "user_id" : 452775,
+      "user_type" : "registered",
+      "accept_rate" : 63,
+      "profile_image" : "https://i.sstatic.net/XVJfe.jpg?s=256",
+      "display_name" : "Lii",
+      "link" : "https://stackoverflow.com/users/452775/lii"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1669542616,
+    "post_id" : 13375357,
+    "comment_id" : 131660831,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "This has become even funnier since &quot;goat&quot; started to be used as a short for &quot;Greatest of all time&quot;! :D"
+  }, {
+    "owner" : {
+      "account_id" : 4865492,
+      "reputation" : 49205,
+      "user_id" : 3923896,
+      "user_type" : "registered",
+      "accept_rate" : 69,
+      "profile_image" : "https://i.sstatic.net/AcZuX.png?s=256",
+      "display_name" : "Steve Summit",
+      "link" : "https://stackoverflow.com/users/3923896/steve-summit"
+    },
+    "reply_to_user" : {
+      "account_id" : 16660,
+      "reputation" : 20271,
+      "user_id" : 36537,
+      "user_type" : "registered",
+      "accept_rate" : 74,
+      "profile_image" : "https://www.gravatar.com/avatar/05e8bace9f460f632af6b699a80408e9?s=256&d=identicon&r=PG",
+      "display_name" : "Phil H",
+      "link" : "https://stackoverflow.com/users/36537/phil-h"
+    },
+    "edited" : false,
+    "score" : 2,
+    "creation_date" : 1661592892,
+    "post_id" : 6841333,
+    "comment_id" : 129812204,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@PhilH The rule to &quot;always, always use seconds since an epoch&quot;, which almost everyone does indeed follow, is probably going to lead to the abolition of <a href=\"https://en.wikipedia.org/wiki/Leap_second\" rel=\"nofollow noreferrer\">leap seconds</a>.  Seconds-since-an-epoch representations are mildly but significantly and indeed fundamentally flawed, in that they do not and cannot properly represent <a href=\"https://en.wikipedia.org/wiki/Coordinated_Universal_Time\" rel=\"nofollow noreferrer\">UTC</a> as currently defined.  But it&#39;s so hard to fix this problem with our computer programs that we&#39;re probably going to make a change to the real world, instead."
+  }, {
+    "owner" : {
+      "account_id" : 244572,
+      "reputation" : 2215,
+      "user_id" : 2266682,
+      "user_type" : "registered",
+      "accept_rate" : 75,
+      "profile_image" : "https://www.gravatar.com/avatar/f56eb127cfa555e11b11260bd9accda7?s=256&d=identicon&r=PG",
+      "display_name" : "Aqeel Ashiq",
+      "link" : "https://stackoverflow.com/users/2266682/aqeel-ashiq"
+    },
+    "edited" : false,
+    "score" : 9,
+    "creation_date" : 1661226181,
+    "post_id" : 6841333,
+    "comment_id" : 129714885,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "I am amazed, nobody has wondered how this question even came to your mind? You already knew the answer and wanted to share with others? Or you read one of those &quot;magical programming&quot; articles which highlighted this surprising result. Otherwise who would fall upon two exact timestamps from 84 years ago, which could cause this."
+  }, {
+    "owner" : {
+      "account_id" : 2309641,
+      "reputation" : 5070,
+      "user_id" : 2028066,
+      "user_type" : "registered",
+      "accept_rate" : 52,
+      "profile_image" : "https://i.sstatic.net/U9hAY.jpg?s=256",
+      "display_name" : "MiguelMunoz",
+      "link" : "https://stackoverflow.com/users/2028066/miguelmunoz"
+    },
+    "reply_to_user" : {
+      "account_id" : 3314475,
+      "reputation" : 151,
+      "user_id" : 2787149,
+      "user_type" : "registered",
+      "accept_rate" : 20,
+      "profile_image" : "https://www.gravatar.com/avatar/ba50d872bad0cacbaa0ec75cc3351539?s=256&d=identicon&r=PG",
+      "display_name" : "Abhishek kapoor",
+      "link" : "https://stackoverflow.com/users/2787149/abhishek-kapoor"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1657580693,
+    "post_id" : 271526,
+    "comment_id" : 128840170,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Abhishekkapoor Using Option on input parameters is an understandable idea, but it&#39;s actually a very bad idea in practice. I have a blog about this where I give several examples, all taken from production code, where this practices causes more trouble than it&#39;s worth. If you&#39;re interested, read it at <a href=\"https://github.com/SwingGuy1024/Blog/blob/master/Bad%20Uses%20of%20Optional.md\" rel=\"nofollow noreferrer\">github.com/SwingGuy1024/Blog/blob/master/&hellip;</a>"
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 10541,
+      "reputation" : 5344,
+      "user_id" : 19974,
+      "user_type" : "registered",
+      "accept_rate" : 100,
+      "profile_image" : "https://www.gravatar.com/avatar/1e1d9c504e0f6efe146938295a8ca59a?s=256&d=identicon&r=PG",
+      "display_name" : "Jason Short",
+      "link" : "https://stackoverflow.com/users/19974/jason-short"
+    },
+    "edited" : false,
+    "score" : 8,
+    "creation_date" : 1657064804,
+    "post_id" : 11227809,
+    "comment_id" : 128719329,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@JasonShort: This question is from 2012.  Even modern Java probably still uses a branch.  And GCC auto-vectorization was only enabled at <code>-O3</code> until GCC12 (this year) enabled it at <code>-O2</code>.  And as the linked Q&amp;As at the bottom show, <a href=\"https://stackoverflow.com/q/28875325\">specifically the GCC -O2 vs -O3 one</a>, GCC <code>-O2</code> used a branch for its scalar code.  But yes, the right choice for C++ compilers these days is auto-vectorization, or at least scalar if-conversion to cmov, on unpredictable branches like this, and that happens if you enable <i>full</i> optimization, but many people use <code>-O2</code>."
+  }, {
+    "owner" : {
+      "account_id" : 10541,
+      "reputation" : 5344,
+      "user_id" : 19974,
+      "user_type" : "registered",
+      "accept_rate" : 100,
+      "profile_image" : "https://www.gravatar.com/avatar/1e1d9c504e0f6efe146938295a8ca59a?s=256&d=identicon&r=PG",
+      "display_name" : "Jason Short",
+      "link" : "https://stackoverflow.com/users/19974/jason-short"
+    },
+    "edited" : false,
+    "score" : 3,
+    "creation_date" : 1657058940,
+    "post_id" : 11227809,
+    "comment_id" : 128718359,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Unironically have you tried this run in RELEASE mode?  On my local Core i7 laptop debug is similar to your numbers.  But in release mode it is 0.7 and 0.68 seconds.  The compiler optimized it for you."
+  }, {
+    "owner" : {
+      "account_id" : 6333754,
+      "reputation" : 2223,
+      "user_id" : 4917881,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/58ccd2073f7be170038eeda1016e4b57?s=256&d=identicon&r=PG",
+      "display_name" : "aventurin",
+      "link" : "https://stackoverflow.com/users/4917881/aventurin"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1656531396,
+    "post_id" : 40471,
+    "comment_id" : 128598700,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "According to <a href=\"https://doi.org/10.48550/arXiv.1602.00984\" rel=\"nofollow noreferrer\">doi.org/10.48550/arXiv.1602.00984</a> Hashtable is more efficient than HashMap in terms of both energy consumption and execution time."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 10795251,
+      "reputation" : 5518,
+      "user_id" : 7941251,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/4nchL.jpg?s=256",
+      "display_name" : "SuperStormer",
+      "link" : "https://stackoverflow.com/users/7941251/superstormer"
+    },
+    "edited" : false,
+    "score" : 3,
+    "creation_date" : 1654375339,
+    "post_id" : 11227809,
+    "comment_id" : 128077512,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@SuperStormer: Yup, that&#39;s already linked at the bottom of the question, in the &quot;Related / followup Q&amp;As&quot; section I added, and an earlier comment.  Perhaps it should be even more prominent since multiple people do still manage to miss it, e.g. a recent duplicate of that clang auto-vectorization question even linked this one."
+  }, {
+    "owner" : {
+      "account_id" : 10795251,
+      "reputation" : 5518,
+      "user_id" : 7941251,
+      "user_type" : "registered",
+      "profile_image" : "https://i.sstatic.net/4nchL.jpg?s=256",
+      "display_name" : "SuperStormer",
+      "link" : "https://stackoverflow.com/users/7941251/superstormer"
+    },
+    "edited" : false,
+    "score" : 4,
+    "creation_date" : 1654310355,
+    "post_id" : 11227809,
+    "comment_id" : 128067004,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "2021 followup: <a href=\"https://stackoverflow.com/q/66521344\">Why is processing an unsorted array the same speed as processing a sorted array with modern x86-64 clang?</a>"
+  }, {
+    "owner" : {
+      "account_id" : 11083708,
+      "reputation" : 640,
+      "user_id" : 8138184,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/cd224d0df66e10cce369ab002e4dca09?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "NSaran",
+      "link" : "https://stackoverflow.com/users/8138184/nsaran"
+    },
+    "edited" : false,
+    "score" : 0,
+    "creation_date" : 1654190340,
+    "post_id" : 13375357,
+    "comment_id" : 128037824,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Maybe to track how many times a user ended up in an unexpected/unhandled situation by calling this method."
+  }, {
+    "owner" : {
+      "account_id" : 7455189,
+      "reputation" : 168,
+      "user_id" : 5668661,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/ca91acc37a168a5c118919ceb34c7740?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "HelloWorld",
+      "link" : "https://stackoverflow.com/users/5668661/helloworld"
+    },
+    "edited" : false,
+    "score" : 5,
+    "creation_date" : 1651767738,
+    "post_id" : 13375357,
+    "comment_id" : 127446984,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "&quot;As of Build.VERSION_CODES.R, this method always returns false in order to protect goat privacy.&quot;"
+  }, {
+    "owner" : {
+      "account_id" : 2496,
+      "reputation" : 270515,
+      "user_id" : 3474,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://www.gravatar.com/avatar/ffbf4e85b8ffbae4e9039b9c0cf07bc8?s=256&d=identicon&r=PG",
+      "display_name" : "erickson",
+      "link" : "https://stackoverflow.com/users/3474/erickson"
+    },
+    "edited" : false,
+    "score" : 4,
+    "creation_date" : 1651695756,
+    "post_id" : 6841333,
+    "comment_id" : 127427353,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "POSIX seconds may vary in length, but stepping is a permissible and not uncommon implementation option too. That is, the difference between timestamps one second apart can be zero when a leap second is added, or negative if the timestamps are less than one second apart. So, Unix time has non-monotonic behavior like other real-world time systems, and isn&#39;t a panacea."
+  }, {
+    "owner" : {
+      "account_id" : 3747925,
+      "reputation" : 164,
+      "user_id" : 3116163,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/b5c21392ec9157c2fc9ec13241f965e1?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Benedikt M.",
+      "link" : "https://stackoverflow.com/users/3116163/benedikt-m"
+    },
+    "reply_to_user" : {
+      "account_id" : 3314475,
+      "reputation" : 151,
+      "user_id" : 2787149,
+      "user_type" : "registered",
+      "accept_rate" : 20,
+      "profile_image" : "https://www.gravatar.com/avatar/ba50d872bad0cacbaa0ec75cc3351539?s=256&d=identicon&r=PG",
+      "display_name" : "Abhishek kapoor",
+      "link" : "https://stackoverflow.com/users/2787149/abhishek-kapoor"
+    },
+    "edited" : false,
+    "score" : 1,
+    "creation_date" : 1649083859,
+    "post_id" : 271526,
+    "comment_id" : 126780372,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@Abhishekkapoor Optionals are not meant to be used as parameters or return values. They&#39;re only to be used in functional programming (e.g. streams)."
+  }, {
+    "owner" : {
+      "account_id" : 12883313,
+      "reputation" : 649,
+      "user_id" : 9317690,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/c2426d1206e03ac5c7cbdcf2c6b2911f?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "alife",
+      "link" : "https://stackoverflow.com/users/9317690/alife"
+    },
+    "reply_to_user" : {
+      "account_id" : 322981,
+      "reputation" : 346881,
+      "user_id" : 642706,
+      "user_type" : "registered",
+      "accept_rate" : 58,
+      "profile_image" : "https://i.sstatic.net/ZWEI3.jpg?s=256",
+      "display_name" : "Basil Bourque",
+      "link" : "https://stackoverflow.com/users/642706/basil-bourque"
+    },
+    "edited" : false,
+    "score" : 13,
+    "creation_date" : 1645982769,
+    "post_id" : 40471,
+    "comment_id" : 126006792,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@BasilBourque, Yes, but I believe what MissFiona meant by that was something akin to <i>&quot;<code>HashTable</code> has traditionally been only chosen because of its partial threading protection.  But that&#39;s been obviated by <code>ConcurrentHashMap</code>, so it&#39;s generally regarded as retired.  It&#39;s generally recommended to choose between <code>HashMap</code> or <code>ConcurrentHashMap</code>.&quot;</i>  And I believe that to be a sensible comment, if it&#39;s what she meant."
+  }, {
+    "owner" : {
+      "account_id" : 1820313,
+      "reputation" : 1616,
+      "user_id" : 1654526,
+      "user_type" : "registered",
+      "accept_rate" : 36,
+      "profile_image" : "https://www.gravatar.com/avatar/3287ef88010dfa6ae54dfadd74a0d5e0?s=256&d=identicon&r=PG",
+      "display_name" : "Jack",
+      "link" : "https://stackoverflow.com/users/1654526/jack"
+    },
+    "edited" : false,
+    "score" : 15,
+    "creation_date" : 1624958527,
+    "post_id" : 271526,
+    "comment_id" : 120493140,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "The most common misuse of null is people returning null instead of an empty collection. That drives me crazy each time. Stop using nulls, and you&#39;ll live in a better world. Also, spread your code with <code>final</code> keyword and you&#39;ll live in a even better world."
+  }, {
+    "owner" : {
+      "account_id" : 8063048,
+      "reputation" : 123,
+      "user_id" : 11069710,
+      "user_type" : "registered",
+      "profile_image" : "https://www.gravatar.com/avatar/61312c0ba78a3ef5e657212881ad78b4?s=256&d=identicon&r=PG&f=y&so-version=2",
+      "display_name" : "Shmuel Newmark",
+      "link" : "https://stackoverflow.com/users/11069710/shmuel-newmark"
+    },
+    "edited" : false,
+    "score" : 26,
+    "creation_date" : 1622236770,
+    "post_id" : 309424,
+    "comment_id" : 119744380,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "Most of these answers were written pre-Java 9, but now you can get a byte array from the InputStream using .readAllBytes. So, simply &quot;new String(inputStream.readAllBytes())&quot; works using String&#39;s byte[] constructor."
+  }, {
+    "owner" : {
+      "account_id" : 78868,
+      "reputation" : 377260,
+      "user_id" : 224132,
+      "user_type" : "registered",
+      "accept_rate" : 83,
+      "profile_image" : "https://i.sstatic.net/N4ivW.png?s=256",
+      "display_name" : "Peter Cordes",
+      "link" : "https://stackoverflow.com/users/224132/peter-cordes"
+    },
+    "reply_to_user" : {
+      "account_id" : 1363207,
+      "reputation" : 1490,
+      "user_id" : 1300177,
+      "user_type" : "registered",
+      "accept_rate" : 93,
+      "profile_image" : "https://www.gravatar.com/avatar/4996dd0400f07c6dd5776f5498c04aea?s=256&d=identicon&r=PG",
+      "display_name" : "screwnut",
+      "link" : "https://stackoverflow.com/users/1300177/screwnut"
+    },
+    "edited" : false,
+    "score" : 36,
+    "creation_date" : 1618469213,
+    "post_id" : 11227809,
+    "comment_id" : 118611283,
+    "content_license" : "CC BY-SA 4.0",
+    "body" : "@screwnut: To be fair, though, it still wouldn&#39;t be worth partitioning first, because partitioning requires conditional copying or swapping based on the same <code>array[i] &gt; 128</code> compare.  (Unless you&#39;re going to be counting multiple times, and you want to partition the bulk of an array so it&#39;s still fast, only mispredicting in an unpartitioned part after some appends or modifications).  If you can get the compiler to do it, ideally just vectorize with SIMD, or at least use branchless scalar if the data is unpredictable.  (See previous comment for links.)"
+  } ],
+  "has_more" : true,
+  "quota_max" : 10000,
+  "quota_remaining" : 9983
+}
