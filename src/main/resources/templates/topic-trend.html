@@ -6,7 +6,25 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; }
-        .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        
+        /* 修改 1: container 不再使用 flex，作为最外层包裹 */
+        .container { max-width: 1400px; margin: 0 auto; }
+        
+        /* 修改 2: 新增 content-wrapper 用于左右布局 */
+        .content-wrapper { display: flex; gap: 20px; }
+
+        /* 修改 3: Header 样式优化，增加白色背景和阴影，与下方风格统一 */
+        .header { 
+            background: white; 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+
         .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: fit-content; }
         .main-content { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         
@@ -25,88 +43,105 @@
         #chartContainer { width: 100%; height: 500px; }
         .pie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .pie-chart { height: 300px; }
+
+        h2 { font-size: 1.5em; color: #333; margin: 0; }
+        a { color: #007bff; text-decoration: none; }
+        a:hover { text-decoration: underline; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- 左侧：主题与关键词选择 -->
-    <div class="sidebar">
-        <h3>主题筛选</h3>
-        <div style="margin-bottom: 10px;">
-            <button class="btn-sm" onclick="toggleAllKeywords(true)">全部展开</button>
-            <button class="btn-sm" onclick="toggleAllKeywords(false)">全部收起</button>
-        </div>
-        
-        <div id="topicList">
-            <div th:each="topic : ${topics}" class="topic-item">
-                <div class="topic-header">
-                    <label>
-                        <input type="checkbox" class="topic-cb" th:value="${topic.id}" checked onchange="handleTopicChange(this)">
-                        <span th:text="${topic.name}" style="font-weight: bold;">Topic</span>
-                    </label>
-                    <button class="btn-sm" onclick="toggleKeywords(this)">展开</button>
-                </div>
-                <div class="keywords-panel">
-                    <div style="margin-bottom: 5px; font-size: 0.8em;">
-                        <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
-                        <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
-                    </div>
-                    <!-- 修改点：使用 arraySplit，并防止 relatedKeywords 为 null -->
-                    <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
-                        <label class="keyword-tag">
-                            <!-- data-kw 用于跨 Topic 同步 -->
-                            <input type="checkbox" class="kw-cb" th:data-kw="${#strings.trim(kw)}" th:value="${#strings.trim(kw)}" checked onchange="handleKeywordChange(this)">
-                            <span th:text="${kw}">kw</span>
-                        </label>
-                    </div>
-                </div>
-            </div>
+    <!-- Header 独立在最上方 -->
+    <div class="header">
+        <h2>主题趋势分析</h2>
+        <div style="font-size: 0.9em;">
+            <a href="/" style="text-decoration: none; color: #007bff; font-weight: bold; margin-left: 10px;">🏠 首页</a> |
+            <span style="color: #666; margin-left: 10px;">📈 趋势分析</span> |
+            <a href="/cooccurrence" style="text-decoration: none; color: #007bff; font-weight: bold; margin-left: 10px;">🔗 共现分析</a> |
+            <a href="/pitfall" style="text-decoration: none; color: #007bff; font-weight: bold; margin-left: 10px;">⚠️ 陷阱分析</a> |
+            <a href="/solvable" style="text-decoration: none; color: #007bff; font-weight: bold; margin-left: 10px;">⚖️ 难易对比</a>
         </div>
     </div>
 
-    <!-- 右侧：控制与图表 -->
-    <div class="main-content">
-        <div class="controls-row">
-            <div class="control-group">
-                <label>搜索范围 (必选其一)</label>
-                <div>
-                    <label><input type="checkbox" id="scope_tag" checked> Tag</label>
-                    <label><input type="checkbox" id="scope_title" checked> Title</label>
-                    <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
-                </div>
+    <!-- 新增 content-wrapper 包裹左右两栏 -->
+    <div class="content-wrapper">
+        <!-- 左侧：主题与关键词选择 -->
+        <div class="sidebar">
+            <h3>主题筛选</h3>
+            <div style="margin-bottom: 10px;">
+                <button class="btn-sm" onclick="toggleAllKeywords(true)">全部展开</button>
+                <button class="btn-sm" onclick="toggleAllKeywords(false)">全部收起</button>
             </div>
             
-            <div class="control-group">
-                <label>图表类型</label>
-                <select id="chartType">
-                    <option value="line">折线图</option>
-                    <option value="bar">柱状图</option>
-                    <option value="pie">饼图</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label>模式</label>
-                <select id="mode">
-                    <option value="compare">对比 (Max 3)</option>
-                    <option value="integrate">整合</option>
-                </select>
-            </div>
-
-            <div class="control-group">
-                <label>时间范围</label>
-                <div style="display: flex; gap: 5px;">
-                    <input type="date" id="startDate" value="2020-01-01">
-                    <input type="date" id="endDate" value="2024-12-31">
+            <div id="topicList">
+                <div th:each="topic : ${topics}" class="topic-item">
+                    <div class="topic-header">
+                        <label>
+                            <input type="checkbox" class="topic-cb" th:value="${topic.id}" checked onchange="handleTopicChange(this)">
+                            <span th:text="${topic.name}" style="font-weight: bold;">Topic</span>
+                        </label>
+                        <button class="btn-sm" onclick="toggleKeywords(this)">展开</button>
+                    </div>
+                    <div class="keywords-panel">
+                        <div style="margin-bottom: 5px; font-size: 0.8em;">
+                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
+                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
+                        </div>
+                        <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
+                            <label class="keyword-tag">
+                                <input type="checkbox" class="kw-cb" th:data-kw="${#strings.trim(kw)}" th:value="${#strings.trim(kw)}" checked onchange="handleKeywordChange(this)">
+                                <span th:text="${kw}">kw</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <button class="btn-primary" onclick="queryData()">查询趋势</button>
         </div>
 
-        <div id="chartContainer"></div>
-        <div id="pieContainer" class="pie-grid" style="display: none;"></div>
+        <!-- 右侧：控制与图表 -->
+        <div class="main-content">
+            <div class="controls-row">
+                <div class="control-group">
+                    <label>搜索范围 (必选其一)</label>
+                    <div>
+                        <label><input type="checkbox" id="scope_tag" checked> Tag</label>
+                        <label><input type="checkbox" id="scope_title" checked> Title</label>
+                        <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
+                    </div>
+                </div>
+                
+                <div class="control-group">
+                    <label>图表类型</label>
+                    <select id="chartType">
+                        <option value="line">折线图</option>
+                        <option value="bar">柱状图</option>
+                        <option value="pie">饼图</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>模式</label>
+                    <select id="mode">
+                        <option value="compare">对比 (Max 3)</option>
+                        <option value="integrate">整合</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label>时间范围</label>
+                    <div style="display: flex; gap: 5px;">
+                        <input type="date" id="startDate" value="2020-01-01">
+                        <input type="date" id="endDate" value="2024-12-31">
+                    </div>
+                </div>
+
+                <button class="btn-primary" onclick="queryData()">查询趋势</button>
+            </div>
+
+            <div id="chartContainer"></div>
+            <div id="pieContainer" class="pie-grid" style="display: none;"></div>
+        </div>
     </div>
 </div>
 

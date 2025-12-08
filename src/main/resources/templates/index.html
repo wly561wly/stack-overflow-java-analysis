@@ -2,35 +2,31 @@
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Stack Overflow Analysis</title>
+    <title>Stack Overflow Java Analysis</title>
     <style>
-        body { font-family: sans-serif; margin: 20px; }
-        .question { border: 1px solid #ddd; margin-bottom: 15px; padding: 15px; border-radius: 5px; }
-        .stats { color: #666; font-size: 0.9em; }
-        .answer { background-color: #f9f9f9; margin-top: 10px; padding: 10px; border-left: 3px solid #28a745; }
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
+        .card { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+        h1 { color: #333; margin-bottom: 30px; }
+        .btn { display: inline-block; margin: 10px; padding: 15px 30px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-size: 1.1em; transition: background 0.3s; }
+        .btn:hover { background: #0056b3; }
+        .btn-secondary { background: #6c757d; }
+        .btn-secondary:hover { background: #545b62; }
+        .btn-warning { background: #ffc107; color: #212529; }
+        .btn-warning:hover { background: #e0a800; }
+        .btn-danger { background: #dc3545; }
+        .btn-danger:hover { background: #c82333; }
     </style>
 </head>
 <body>
-
-<h1>热门 Java 问题分析</h1>
-
-<div th:each="q : ${topQuestions}" class="question">
-    <h3 th:text="${q.fullTitle}">问题标题</h3>
-    <div class="stats">
-        分数: <span th:text="${q.score}">0</span> | 
-        回答数: <span th:text="${q.answerCount}">0</span>
+    <div class="card">
+        <h1>Stack Overflow Java 数据分析</h1>
+        <p>请选择分析模块：</p>
+        <br>
+        <a href="/trend" class="btn">📈 主题趋势分析</a>
+        <a href="/cooccurrence" class="btn btn-secondary">🔗 主题共现分析</a>
+        <br>
+        <a href="/pitfall" class="btn btn-warning">⚠️ 多线程陷阱分析</a>
+        <a href="/solvable" class="btn btn-danger">⚖️ 难易问题对比</a>
     </div>
-    <p th:text="${q.truncatedBody}">问题内容...</p>
-
-    <!-- 显示前几个高分回答 -->
-    <div th:if="${not #lists.isEmpty(q.topAnswers)}">
-        <h4>高分回答:</h4>
-        <div th:each="a : ${q.topAnswers}" class="answer">
-            <div class="stats">回答分数: <span th:text="${a.score}">0</span></div>
-            <p th:text="${a.truncatedBody}">回答内容...</p>
-        </div>
-    </div>
-</div>
-
 </body>
 </html>
