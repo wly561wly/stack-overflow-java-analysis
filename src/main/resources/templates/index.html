@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Stack Overflow Analysis</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; }
+        .question { border: 1px solid #ddd; margin-bottom: 15px; padding: 15px; border-radius: 5px; }
+        .stats { color: #666; font-size: 0.9em; }
+        .answer { background-color: #f9f9f9; margin-top: 10px; padding: 10px; border-left: 3px solid #28a745; }
+    </style>
+</head>
+<body>
+
+<h1>热门 Java 问题分析</h1>
+
+<div th:each="q : ${topQuestions}" class="question">
+    <h3 th:text="${q.fullTitle}">问题标题</h3>
+    <div class="stats">
+        分数: <span th:text="${q.score}">0</span> | 
+        回答数: <span th:text="${q.answerCount}">0</span>
+    </div>
+    <p th:text="${q.truncatedBody}">问题内容...</p>
+
+    <!-- 显示前几个高分回答 -->
+    <div th:if="${not #lists.isEmpty(q.topAnswers)}">
+        <h4>高分回答:</h4>
+        <div th:each="a : ${q.topAnswers}" class="answer">
+            <div class="stats">回答分数: <span th:text="${a.score}">0</span></div>
+            <p th:text="${a.truncatedBody}">回答内容...</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

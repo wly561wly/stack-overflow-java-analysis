@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>主题趋势分析</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; }
+        .container { display: flex; gap: 20px; max-width: 1400px; margin: 0 auto; }
+        .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: fit-content; }
+        .main-content { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        .topic-item { border-bottom: 1px solid #eee; padding: 8px 0; }
+        .topic-header { display: flex; align-items: center; justify-content: space-between; }
+        .keywords-panel { margin-left: 20px; margin-top: 5px; display: none; padding: 5px; background: #f8f9fa; border-radius: 4px; }
+        .keyword-tag { display: inline-block; margin: 2px 5px; font-size: 0.9em; }
+        
+        .controls-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group label { font-weight: bold; font-size: 0.9em; color: #555; }
+        
+        button.btn-primary { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        button.btn-sm { padding: 2px 6px; font-size: 0.8em; border: 1px solid #ddd; background: white; cursor: pointer; }
+        
+        #chartContainer { width: 100%; height: 500px; }
+        .pie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .pie-chart { height: 300px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 左侧：主题与关键词选择 -->
+    <div class="sidebar">
+        <h3>主题筛选</h3>
+        <div style="margin-bottom: 10px;">
+            <button class="btn-sm" onclick="toggleAllKeywords(true)">全部展开</button>
+            <button class="btn-sm" onclick="toggleAllKeywords(false)">全部收起</button>
+        </div>
+        
+        <div id="topicList">
+            <div th:each="topic : ${topics}" class="topic-item">
+                <div class="topic-header">
+                    <label>
+                        <input type="checkbox" class="topic-cb" th:value="${topic.id}" checked onchange="handleTopicChange(this)">
+                        <span th:text="${topic.name}" style="font-weight: bold;">Topic</span>
+                    </label>
+                    <button class="btn-sm" onclick="toggleKeywords(this)">展开</button>
+                </div>
+                <div class="keywords-panel">
+                    <div style="margin-bottom: 5px; font-size: 0.8em;">
+                        <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
+                        <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
+                    </div>
+                    <!-- 修改点：使用 arraySplit，并防止 relatedKeywords 为 null -->
+                    <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
+                        <label class="keyword-tag">
+                            <!-- data-kw 用于跨 Topic 同步 -->
+                            <input type="checkbox" class="kw-cb" th:data-kw="${#strings.trim(kw)}" th:value="${#strings.trim(kw)}" checked onchange="handleKeywordChange(this)">
+                            <span th:text="${kw}">kw</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：控制与图表 -->
+    <div class="main-content">
+        <div class="controls-row">
+            <div class="control-group">
+                <label>搜索范围 (必选其一)</label>
+                <div>
+                    <label><input type="checkbox" id="scope_tag" checked> Tag</label>
+                    <label><input type="checkbox" id="scope_title" checked> Title</label>
+                    <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <label>图表类型</label>
+                <select id="chartType">
+                    <option value="line">折线图</option>
+                    <option value="bar">柱状图</option>
+                    <option value="pie">饼图</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>模式</label>
+                <select id="mode">
+                    <option value="compare">对比 (Max 3)</option>
+                    <option value="integrate">整合</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>时间范围</label>
+                <div style="display: flex; gap: 5px;">
+                    <input type="date" id="startDate" value="2020-01-01">
+                    <input type="date" id="endDate" value="2024-12-31">
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="queryData()">查询趋势</button>
+        </div>
+
+        <div id="chartContainer"></div>
+        <div id="pieContainer" class="pie-grid" style="display: none;"></div>
+    </div>
+</div>
+
+<script>
+    // --- 交互逻辑 ---
+
+    function toggleKeywords(btn) {
+        const panel = btn.parentElement.nextElementSibling;
+        panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        btn.innerText = panel.style.display === 'block' ? '收起' : '展开';
+    }
+
+    function toggleAllKeywords(show) {
+        document.querySelectorAll('.keywords-panel').forEach(p => p.style.display = show ? 'block' : 'none');
+    }
+
+    // 1. Topic 勾选 -> 全选/全不选其下的 Keywords
+    function handleTopicChange(topicCb) {
+        const panel = topicCb.closest('.topic-item').querySelector('.keywords-panel');
+        const kws = panel.querySelectorAll('.kw-cb');
+        kws.forEach(cb => {
+            cb.checked = topicCb.checked;
+            syncKeywordGlobally(cb); // 触发全局同步
+        });
+    }
+
+    // 2. Keyword 勾选 -> 同步其他 Topic 的相同 Keyword -> 更新 Topic 勾选状态
+    function handleKeywordChange(kwCb) {
+        syncKeywordGlobally(kwCb);
+        updateTopicCheckbox(kwCb.closest('.topic-item'));
+    }
+
+    // 全局同步：找到所有 data-kw 相同的 checkbox 并设为相同状态
+    function syncKeywordGlobally(sourceCb) {
+        const kw = sourceCb.getAttribute('data-kw');
+        const isChecked = sourceCb.checked;
+        document.querySelectorAll(`.kw-cb[data-kw="${kw}"]`).forEach(cb => {
+            if (cb !== sourceCb) {
+                cb.checked = isChecked;
+                // 被动更新的 checkbox 也要触发其父 Topic 的状态更新
+                updateTopicCheckbox(cb.closest('.topic-item'));
+            }
+        });
+    }
+
+    // 更新 Topic 状态：只要有一个 Keyword 被选，Topic 就被选；全不选则 Topic 不选
+    function updateTopicCheckbox(topicItem) {
+        const topicCb = topicItem.querySelector('.topic-cb');
+        const kws = topicItem.querySelectorAll('.kw-cb');
+        let anyChecked = false;
+        kws.forEach(k => { if(k.checked) anyChecked = true; });
+        topicCb.checked = anyChecked;
+    }
+
+    function batchSelectKeywords(link, select) {
+        const panel = link.closest('.keywords-panel');
+        panel.querySelectorAll('.kw-cb').forEach(cb => {
+            cb.checked = select;
+            syncKeywordGlobally(cb);
+        });
+        updateTopicCheckbox(link.closest('.topic-item'));
+    }
+
+    // --- 图表逻辑 ---
+    let mainChart = echarts.init(document.getElementById('chartContainer'));
+    let pieCharts = [];
+
+    function queryData() {
+        // 收集参数
+        const topicIds = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.value);
+        // 使用 Set 去重收集所有被选中的关键词
+        const selectedKws = new Set();
+        document.querySelectorAll('.kw-cb:checked').forEach(cb => selectedKws.add(cb.value));
+        
+        const scopes = [];
+        if(document.getElementById('scope_tag').checked) scopes.push('tag');
+        if(document.getElementById('scope_title').checked) scopes.push('title');
+        if(document.getElementById('scope_fulltext').checked) scopes.push('fulltext');
+
+        const chartType = document.getElementById('chartType').value;
+        const mode = document.getElementById('mode').value;
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+
+        // 前端校验
+        if (topicIds.length === 0) return alert("请至少选择一个主题");
+        if (scopes.length === 0) return alert("请至少选择一个搜索范围");
+        if (chartType === 'pie' && mode === 'integrate') return alert("整合模式不支持饼图");
+        if (mode === 'compare' && topicIds.length > 3) return alert("对比模式最多支持 3 个主题");
+
+        mainChart.showLoading();
+
+        const formData = new FormData();
+        formData.append('topicIds', topicIds.join(','));
+        formData.append('selectedKeywords', Array.from(selectedKws).join(','));
+        formData.append('scopes', scopes.join(','));
+        formData.append('chartType', chartType);
+        formData.append('mode', mode);
+        formData.append('startDate', startDate);
+        formData.append('endDate', endDate);
+
+        fetch('/trend/data', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                mainChart.hideLoading();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    renderCharts(data, chartType);
+                }
+            })
+            .catch(err => {
+                mainChart.hideLoading();
+                console.error(err);
+                alert("请求失败，请检查控制台");
+            });
+    }
+
+    function renderCharts(data, type) {
+        const pieContainer = document.getElementById('pieContainer');
+        const lineContainer = document.getElementById('chartContainer');
+        
+        // 清理旧饼图
+        pieContainer.innerHTML = '';
+        pieCharts.forEach(c => c.dispose());
+        pieCharts = [];
+
+        if (type === 'pie') {
+            lineContainer.style.display = 'none';
+            pieContainer.style.display = 'grid';
+            
+            const metrics = ['questionCount', 'viewCount', 'answerCount', 'score'];
+            const titles = ['问题数', '浏览数', '回答数', '点赞数'];
+            
+            metrics.forEach((m, idx) => {
+                const div = document.createElement('div');
+                div.className = 'pie-chart';
+                pieContainer.appendChild(div);
+                
+                const chart = echarts.init(div);
+                pieCharts.push(chart);
+                
+                const pieData = [];
+                for (let topic in data.pies[m]) {
+                    pieData.push({ name: topic, value: data.pies[m][topic] });
+                }
+                
+                chart.setOption({
+                    title: { text: titles[idx], left: 'center' },
+                    tooltip: { trigger: 'item' },
+                    series: [{ type: 'pie', radius: '50%', data: pieData }]
+                });
+            });
+
+        } else {
+            lineContainer.style.display = 'block';
+            pieContainer.style.display = 'none';
+            mainChart.resize(); // 确保显示
+
+            const series = [];
+            for (let key in data.series) {
+                // 简单的样式区分
+                let sType = type; // line or bar
+                // 如果是整合模式，可能想混合显示？这里简化为全部跟随 chartType
+                series.push({
+                    name: key,
+                    type: sType,
+                    data: data.series[key],
+                    smooth: true
+                });
+            }
+
+            mainChart.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { top: 'bottom', type: 'scroll' },
+                xAxis: { type: 'category', data: data.dates },
+                yAxis: { type: 'value' },
+                series: series
+            }, true); // true = not merge, clear old
+        }
+    }
+    
+    window.addEventListener('resize', () => {
+        mainChart.resize();
+        pieCharts.forEach(c => c.resize());
+    });
+</script>
+</body>
+</html>
