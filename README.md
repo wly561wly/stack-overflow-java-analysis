@@ -25,13 +25,7 @@ spring.jpa.hibernate.ddl-auto=update
 
 2. **Data Initialization (First Run Only)**
 
-If your database is empty, enable data fetching in `StackOverflowJavaAnalysisApplication.java`:
-
-Uncomment collector.collectSamplePlan(); in the initTopics method.
-
-Run the app once to populate data.
-
-Comment it out again to prevent re-fetching on subsequent restarts.
+First run the test code to validate and collect the data; once verified, insert the data into the database.
 
 3. **Run the Application**
 
