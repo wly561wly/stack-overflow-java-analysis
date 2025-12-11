@@ -34,14 +34,14 @@ public class TopicTrendService {
                                             String mode,
                                             String startDateStr,
                                             String endDateStr) {
-        
+
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate = LocalDate.parse(endDateStr);
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
         List<Topic> topics = topicRepository.findAllById(topicIds);
-        
+
         // 准备每个 Topic 的有效关键词
         // 逻辑：如果前端传了 selectedKeywords，则取 Topic 自身关键词与 selectedKeywords 的交集
         // 如果交集为空（说明该 Topic 下没有勾选任何词），则该 Topic 不应有数据（或者前端已控制不传该ID）
@@ -70,8 +70,11 @@ public class TopicTrendService {
                     allQuestions.addAll(queryQuestions(kws, scopes, startDateTime, endDateTime));
                 }
             }
-            // 整合模式只有一个 "ALL" 系列
-            return buildTimeSeriesData(Map.of("ALL", allQuestions), chartType);
+            if ("pie".equalsIgnoreCase(chartType)) {
+                return buildPieData(Map.of("ALL", allQuestions));
+            } else {
+                return buildTimeSeriesDataWithNormalization(Map.of("ALL", allQuestions), chartType);
+            }
 
         } else {
             // 对比模式：每个 Topic 独立统计
@@ -89,7 +92,7 @@ public class TopicTrendService {
             if ("pie".equalsIgnoreCase(chartType)) {
                 return buildPieData(topicQuestionsMap);
             } else {
-                return buildTimeSeriesData(topicQuestionsMap, chartType);
+                return buildTimeSeriesDataWithNormalization(topicQuestionsMap, chartType);
             }
         }
     }
@@ -107,6 +110,112 @@ public class TopicTrendService {
                 result.addAll(questionRepository.findByBodyContainingAndCreationDateBetween(kw, start, end));
             }
         }
+        return result;
+    }
+
+    // 添加Min-Max归一化方法
+    private List<Double> normalize(List<Number> values) {
+        if (values == null || values.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 转换为double列表
+        List<Double> doubleValues = values.stream()
+                .map(Number::doubleValue)
+                .collect(Collectors.toList());
+
+        // 计算最大值和最小值
+        double min = Collections.min(doubleValues);
+        double max = Collections.max(doubleValues);
+
+        // 如果所有值都相等，返回全0列表
+        if (max == min) {
+            return doubleValues.stream().map(v -> 0.0).collect(Collectors.toList());
+        }
+
+        // 归一化处理
+        return doubleValues.stream()
+                .map(v -> (v - min) / (max - min))
+                .collect(Collectors.toList());
+    }
+
+    // 新增带归一化的数据构建方法
+    private Map<String, Object> buildTimeSeriesDataWithNormalization(Map<String, Set<Question>> dataMap, String chartType) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+        SortedSet<String> dates = new TreeSet<>();
+        Map<String, Map<String, List<Question>>> groupedData = new HashMap<>();
+
+        // 1. Group by Date
+        for (String key : dataMap.keySet()) {
+            Map<String, List<Question>> byDate = dataMap.get(key).stream()
+                    .collect(Collectors.groupingBy(q -> q.getCreationDate().format(fmt)));
+            groupedData.put(key, byDate);
+            dates.addAll(byDate.keySet());
+        }
+
+        // 2. Build Series with original and normalized data
+        Map<String, List<Number>> originalSeries = new LinkedHashMap<>();
+        Map<String, List<Double>> normalizedSeries = new LinkedHashMap<>();
+
+        // 存储原始数据，用于tooltip显示
+        Map<String, Object> originalDataMap = new HashMap<>();
+
+        for (String key : dataMap.keySet()) {
+            // 原始数据系列
+            originalSeries.put(key + "_count", new ArrayList<>());
+            originalSeries.put(key + "_score", new ArrayList<>());
+            originalSeries.put(key + "_views", new ArrayList<>());
+            originalSeries.put(key + "_answers", new ArrayList<>());
+
+            // 归一化数据系列（用于图表绘制）
+            normalizedSeries.put(key + "_count_normalized", new ArrayList<>());
+            normalizedSeries.put(key + "_score_normalized", new ArrayList<>());
+            normalizedSeries.put(key + "_views_normalized", new ArrayList<>());
+            normalizedSeries.put(key + "_answers_normalized", new ArrayList<>());
+        }
+
+        // 收集所有数据用于整体归一化
+        Map<String, List<Number>> allDataForNormalization = new HashMap<>();
+        for (String key : dataMap.keySet()) {
+            allDataForNormalization.put(key + "_count", new ArrayList<>());
+            allDataForNormalization.put(key + "_score", new ArrayList<>());
+            allDataForNormalization.put(key + "_views", new ArrayList<>());
+            allDataForNormalization.put(key + "_answers", new ArrayList<>());
+        }
+
+        for (String date : dates) {
+            for (String key : dataMap.keySet()) {
+                List<Question> list = groupedData.get(key).getOrDefault(date, Collections.emptyList());
+
+                int count = list.size();
+                long score = list.stream().mapToLong(q -> q.getScore() == null ? 0 : q.getScore()).sum();
+                long views = list.stream().mapToLong(q -> q.getViewCount() == null ? 0 : q.getViewCount()).sum();
+                long answers = list.stream().mapToLong(q -> q.getAnswerCount() == null ? 0 : q.getAnswerCount()).sum();
+
+                // 添加原始数据
+                originalSeries.get(key + "_count").add(count);
+                originalSeries.get(key + "_score").add(score);
+                originalSeries.get(key + "_views").add(views);
+                originalSeries.get(key + "_answers").add(answers);
+
+                // 收集用于归一化的数据
+                allDataForNormalization.get(key + "_count").add(count);
+                allDataForNormalization.get(key + "_score").add(score);
+                allDataForNormalization.get(key + "_views").add(views);
+                allDataForNormalization.get(key + "_answers").add(answers);
+            }
+        }
+
+        // 对每种指标进行整体归一化
+        for (String seriesKey : allDataForNormalization.keySet()) {
+            List<Double> normalized = normalize(allDataForNormalization.get(seriesKey));
+            normalizedSeries.put(seriesKey + "_normalized", normalized);
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("dates", dates);
+        result.put("originalSeries", originalSeries);  // 原始数据
+        result.put("normalizedSeries", normalizedSeries);  // 归一化数据
         return result;
     }
 
@@ -135,7 +244,7 @@ public class TopicTrendService {
         for (String date : dates) {
             for (String key : dataMap.keySet()) {
                 List<Question> list = groupedData.get(key).getOrDefault(date, Collections.emptyList());
-                
+
                 series.get(key + "_count").add(list.size());
                 series.get(key + "_score").add(list.stream().mapToLong(q -> q.getScore() == null ? 0 : q.getScore()).sum());
                 series.get(key + "_views").add(list.stream().mapToLong(q -> q.getViewCount() == null ? 0 : q.getViewCount()).sum());

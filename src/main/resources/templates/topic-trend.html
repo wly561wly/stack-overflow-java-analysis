@@ -215,7 +215,7 @@
         // 使用 Set 去重收集所有被选中的关键词
         const selectedKws = new Set();
         document.querySelectorAll('.kw-cb:checked').forEach(cb => selectedKws.add(cb.value));
-        
+
         const scopes = [];
         if(document.getElementById('scope_tag').checked) scopes.push('tag');
         if(document.getElementById('scope_title').checked) scopes.push('title');
@@ -263,7 +263,7 @@
     function renderCharts(data, type) {
         const pieContainer = document.getElementById('pieContainer');
         const lineContainer = document.getElementById('chartContainer');
-        
+
         // 清理旧饼图
         pieContainer.innerHTML = '';
         pieCharts.forEach(c => c.dispose());
@@ -272,23 +272,23 @@
         if (type === 'pie') {
             lineContainer.style.display = 'none';
             pieContainer.style.display = 'grid';
-            
+
             const metrics = ['questionCount', 'viewCount', 'answerCount', 'score'];
             const titles = ['问题数', '浏览数', '回答数', '点赞数'];
-            
+
             metrics.forEach((m, idx) => {
                 const div = document.createElement('div');
                 div.className = 'pie-chart';
                 pieContainer.appendChild(div);
-                
+
                 const chart = echarts.init(div);
                 pieCharts.push(chart);
-                
+
                 const pieData = [];
                 for (let topic in data.pies[m]) {
                     pieData.push({ name: topic, value: data.pies[m][topic] });
                 }
-                
+
                 chart.setOption({
                     title: { text: titles[idx], left: 'center' },
                     tooltip: { trigger: 'item' },
@@ -301,26 +301,150 @@
             pieContainer.style.display = 'none';
             mainChart.resize(); // 确保显示
 
+            // 处理归一化数据
             const series = [];
-            for (let key in data.series) {
-                // 简单的样式区分
-                let sType = type; // line or bar
-                // 如果是整合模式，可能想混合显示？这里简化为全部跟随 chartType
-                series.push({
-                    name: key,
-                    type: sType,
-                    data: data.series[key],
-                    smooth: true
-                });
-            }
 
-            mainChart.setOption({
-                tooltip: { trigger: 'axis' },
-                legend: { top: 'bottom', type: 'scroll' },
-                xAxis: { type: 'category', data: data.dates },
-                yAxis: { type: 'value' },
-                series: series
-            }, true); // true = not merge, clear old
+            // 检查是否是整合模式（只有series字段，没有originalSeries和normalizedSeries）
+            const isIntegrateMode = !data.originalSeries && !data.normalizedSeries && data.series;
+
+            if (isIntegrateMode) {
+                // 整合模式：直接使用series数据
+                for (let key in data.series) {
+                    series.push({
+                        name: key,
+                        type: type, // line or bar
+                        data: data.series[key],
+                        smooth: true
+                    });
+                }
+
+                mainChart.setOption({
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    legend: {
+                        top: 'bottom',
+                        type: 'scroll'
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.dates
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: series
+                }, true);
+            } else {
+                // 对比模式：处理归一化数据
+                const originalSeries = data.originalSeries || data.series;
+                const normalizedSeries = data.normalizedSeries || data.series;
+
+                // 创建指标映射关系，用于tooltip显示原始值
+                const metricNames = {
+                    '_count': '问题数',
+                    '_score': '点赞数',
+                    '_views': '浏览数',
+                    '_answers': '回答数'
+                };
+
+                // 为每个系列创建图表数据
+                for (let key in normalizedSeries) {
+                    // 只处理归一化数据系列
+                    if (key.endsWith('_normalized')) {
+                        // 获取对应的原始数据系列名
+                        const originalKey = key.replace('_normalized', '');
+
+                        series.push({
+                            name: key.replace('_normalized', ''),
+                            type: type, // line or bar
+                            data: normalizedSeries[key],
+                            smooth: true,
+                            // 自定义tooltip formatter以显示原始值
+                            tooltip: {
+                                formatter: function(params) {
+                                    // 获取原始值
+                                    const originalData = originalSeries[originalKey];
+                                    const originalValue = originalData ? originalData[params.dataIndex] : 'N/A';
+
+                                    // 获取指标名称
+                                    let metricName = '';
+                                    for (let suffix in metricNames) {
+                                        if (originalKey.endsWith(suffix)) {
+                                            metricName = metricNames[suffix];
+                                            break;
+                                        }
+                                    }
+
+                                    return `${params.seriesName}<br />
+                                        ${metricName}: ${originalValue}<br />
+                                        归一化值: ${params.value.toFixed(4)}`;
+                                }
+                            }
+                        });
+                    }
+                }
+
+                mainChart.setOption({
+                    tooltip: {
+                        trigger: 'axis',
+                        formatter: function(params) {
+                            let result = `${params[0].axisValue}<br />`;
+                            params.forEach(param => {
+                                // 获取原始值
+                                const originalKey = param.seriesName;
+                                let originalValue = 'N/A';
+
+                                // 根据系列名找到对应的原始数据
+                                if (originalSeries) {
+                                    for (let key in originalSeries) {
+                                        if (key === originalKey) {
+                                            originalValue = originalSeries[key][param.dataIndex];
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                // 获取指标名称
+                                let metricName = '';
+                                for (let suffix in metricNames) {
+                                    if (originalKey.endsWith(suffix)) {
+                                        metricName = metricNames[suffix];
+                                        break;
+                                    }
+                                }
+
+                                result += `${param.marker} ${param.seriesName}: ${originalValue} (${metricName})<br />`;
+                            });
+                            return result;
+                        }
+                    },
+                    legend: {
+                        top: 'bottom',
+                        type: 'scroll',
+                        formatter: function(name) {
+                            // 在图例中显示指标类型
+                            let metricName = '';
+                            for (let suffix in metricNames) {
+                                if (name.endsWith(suffix)) {
+                                    metricName = metricNames[suffix];
+                                    break;
+                                }
+                            }
+                            return `${name} (${metricName})`;
+                        }
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.dates
+                    },
+                    yAxis: {
+                        type: 'value',
+                        name: '归一化值 (0-1)'
+                    },
+                    series: series
+                }, true); // true = not merge, clear old
+            }
         }
     }
     
