@@ -4,6 +4,7 @@ import org.example.stackoverflowjavaanalysis.data.model.Question;
 import org.example.stackoverflowjavaanalysis.data.model.Topic;
 import org.example.stackoverflowjavaanalysis.data.repository.QuestionRepository;
 import org.example.stackoverflowjavaanalysis.data.repository.TopicRepository;
+import org.example.stackoverflowjavaanalysis.util.NumberUtils; // 导入工具类
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,10 +50,26 @@ public class SolvableQuestionService {
             }
         }
 
-        double getAvgScore() { return count == 0 ? 0 : (double) totalScore / count; }
-        double getAvgViews() { return count == 0 ? 0 : (double) totalViews / count; }
-        double getAvgAnswers() { return count == 0 ? 0 : (double) totalAnswers / count; }
-        double getQualityRate() { return count == 0 ? 0 : (double) qualityCount / count; }
+        // 修改为返回保留两位小数的double值
+        double getAvgScore() { 
+            double value = count == 0 ? 0 : (double) totalScore / count;
+            return NumberUtils.roundToTwoDecimalPlaces(value);
+        }
+        
+        double getAvgViews() { 
+            double value = count == 0 ? 0 : (double) totalViews / count;
+            return NumberUtils.roundToTwoDecimalPlaces(value);
+        }
+        
+        double getAvgAnswers() { 
+            double value = count == 0 ? 0 : (double) totalAnswers / count;
+            return NumberUtils.roundToTwoDecimalPlaces(value);
+        }
+        
+        double getQualityRate() { 
+            double value = count == 0 ? 0 : (double) qualityCount / count;
+            return NumberUtils.roundToTwoDecimalPlaces(value);
+        }
     }
 
     public Map<String, Object> getComparisonData(String startDateStr,
@@ -149,25 +166,46 @@ public class SolvableQuestionService {
         pieData.add(Map.of("name", "Hard-to-Solve (难解决)", "value", hard.count));
         result.put("pieData", pieData);
 
-        // 2. 柱状图 (核心指标对比)
+        // 2. 柱状图 (核心指标对比) - 这些值已经通过CategoryStats中的方法进行了格式化
         result.put("barX", Arrays.asList("平均点赞", "平均浏览", "平均回答", "优质占比(%)"));
-        result.put("barSolvable", Arrays.asList(solvable.getAvgScore(), solvable.getAvgViews(), solvable.getAvgAnswers(), solvable.getQualityRate() * 100));
-        result.put("barHard", Arrays.asList(hard.getAvgScore(), hard.getAvgViews(), hard.getAvgAnswers(), hard.getQualityRate() * 100));
+        result.put("barSolvable", Arrays.asList(
+            solvable.getAvgScore(), 
+            solvable.getAvgViews(), 
+            solvable.getAvgAnswers(), 
+            solvable.getQualityRate() * 100
+        ));
+        result.put("barHard", Arrays.asList(
+            hard.getAvgScore(), 
+            hard.getAvgViews(), 
+            hard.getAvgAnswers(), 
+            hard.getQualityRate() * 100
+        ));
 
-        // 3. 雷达图 (综合维度)
-        // 归一化处理比较复杂，这里直接用原始值或简单比例，实际需根据数据范围调整 max
+        // 3. 雷达图 (综合维度) - 这些值也会被格式化
         List<Map<String, Object>> radarIndicator = new ArrayList<>();
         radarIndicator.add(Map.of("name", "数量 (Count)", "max", Math.max(solvable.count, hard.count) * 1.2));
-        radarIndicator.add(Map.of("name", "热度 (Score)", "max", Math.max(solvable.getAvgScore(), hard.getAvgScore()) * 1.2));
-        radarIndicator.add(Map.of("name", "关注 (Views)", "max", Math.max(solvable.getAvgViews(), hard.getAvgViews()) * 1.2));
-        radarIndicator.add(Map.of("name", "互动 (Answers)", "max", Math.max(solvable.getAvgAnswers(), hard.getAvgAnswers()) * 1.2));
+        radarIndicator.add(Map.of("name", "热度 (Score)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgScore(), hard.getAvgScore()) * 1.2)));
+        radarIndicator.add(Map.of("name", "关注 (Views)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgViews(), hard.getAvgViews()) * 1.2)));
+        radarIndicator.add(Map.of("name", "互动 (Answers)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgAnswers(), hard.getAvgAnswers()) * 1.2)));
         radarIndicator.add(Map.of("name", "质量 (Quality)", "max", 100));
         result.put("radarIndicator", radarIndicator);
         
-        result.put("radarSolvable", Arrays.asList(solvable.count, solvable.getAvgScore(), solvable.getAvgViews(), solvable.getAvgAnswers(), solvable.getQualityRate() * 100));
-        result.put("radarHard", Arrays.asList(hard.count, hard.getAvgScore(), hard.getAvgViews(), hard.getAvgAnswers(), hard.getQualityRate() * 100));
+        result.put("radarSolvable", Arrays.asList(
+            solvable.count, 
+            solvable.getAvgScore(), 
+            solvable.getAvgViews(), 
+            solvable.getAvgAnswers(), 
+            solvable.getQualityRate() * 100
+        ));
+        result.put("radarHard", Arrays.asList(
+            hard.count, 
+            hard.getAvgScore(), 
+            hard.getAvgViews(), 
+            hard.getAvgAnswers(), 
+            hard.getQualityRate() * 100
+        ));
 
-        // 4. 折线图 (趋势)
+        // 4. 折线图 (趋势) - 这里是整数数据，不需要格式化
         List<Long> lineSolvable = new ArrayList<>();
         List<Long> lineHard = new ArrayList<>();
         for (String d : dates) {
