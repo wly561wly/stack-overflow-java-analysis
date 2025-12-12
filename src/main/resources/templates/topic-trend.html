@@ -176,6 +176,8 @@
     function toggleAllTopics(select) {
         document.querySelectorAll('.topic-cb').forEach(cb => {
             cb.checked = select;
+            // 清除半选状态
+            cb.indeterminate = false;
             handleTopicChange(cb); // 触发主题变更处理逻辑
         });
     }
@@ -184,6 +186,8 @@
     function handleTopicChange(topicCb) {
         const panel = topicCb.closest('.topic-item').querySelector('.keywords-panel');
         const kws = panel.querySelectorAll('.kw-cb');
+        // 清除半选状态
+        topicCb.indeterminate = false;
         kws.forEach(cb => {
             cb.checked = topicCb.checked;
             syncKeywordGlobally(cb); // 触发全局同步
@@ -209,13 +213,30 @@
         });
     }
 
-    // 更新 Topic 状态：只要有一个 Keyword 被选，Topic 就被选；全不选则 Topic 不选
+    // 核心修改：更新 Topic 状态（支持半选）
     function updateTopicCheckbox(topicItem) {
         const topicCb = topicItem.querySelector('.topic-cb');
         const kws = topicItem.querySelectorAll('.kw-cb');
-        let anyChecked = false;
-        kws.forEach(k => { if(k.checked) anyChecked = true; });
-        topicCb.checked = anyChecked;
+        const total = kws.length;
+        let checkedCount = 0;
+
+        // 统计选中的关键词数量
+        kws.forEach(k => { if(k.checked) checkedCount++; });
+
+        // 三种状态处理：
+        if (checkedCount === 0) {
+            // 全不选：取消勾选 + 清除半选
+            topicCb.checked = false;
+            topicCb.indeterminate = false;
+        } else if (checkedCount === total) {
+            // 全选：勾选 + 清除半选
+            topicCb.checked = true;
+            topicCb.indeterminate = false;
+        } else {
+            // 半选：勾选（视觉上） + 设置半选状态
+            topicCb.checked = true; // 保持勾选状态（保证数据收集）
+            topicCb.indeterminate = true; // 显示半选样式
+        }
     }
 
     function batchSelectKeywords(link, select) {
@@ -517,6 +538,13 @@
     window.addEventListener('resize', () => {
         mainChart.resize();
         pieCharts.forEach(c => c.resize());
+    });
+
+    // 页面加载完成后初始化所有主题的半选状态
+    window.addEventListener('load', function() {
+        document.querySelectorAll('.topic-item').forEach(item => {
+            updateTopicCheckbox(item);
+        });
     });
 </script>
 </body>
