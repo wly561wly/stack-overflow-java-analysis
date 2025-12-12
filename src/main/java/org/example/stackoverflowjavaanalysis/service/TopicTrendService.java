@@ -32,6 +32,7 @@ public class TopicTrendService {
                                             List<String> scopes,
                                             String chartType,
                                             String mode,
+                                            String fixedMetric, // 新增固定指标参数
                                             String startDateStr,
                                             String endDateStr) {
 
@@ -76,6 +77,24 @@ public class TopicTrendService {
                 return buildTimeSeriesDataWithNormalization(Map.of("ALL", allQuestions), chartType);
             }
 
+        } else if ("fixedMetric".equalsIgnoreCase(mode)) {
+            // 固定指标模式：只展示指定指标的数据
+            Map<String, Set<Question>> topicQuestionsMap = new LinkedHashMap<>();
+            for (Topic t : topics) {
+                List<String> kws = topicEffectiveKeywords.get(t.getId());
+                if (kws != null && !kws.isEmpty()) {
+                    Set<Question> qs = queryQuestions(kws, scopes, startDateTime, endDateTime);
+                    topicQuestionsMap.put(t.getName(), qs);
+                } else {
+                    topicQuestionsMap.put(t.getName(), new HashSet<>());
+                }
+            }
+
+            if ("pie".equalsIgnoreCase(chartType)) {
+                return buildPieData(topicQuestionsMap);
+            } else {
+                return buildTimeSeriesDataWithFixedMetric(topicQuestionsMap, chartType, fixedMetric);
+            }
         } else {
             // 对比模式：每个 Topic 独立统计
             Map<String, Set<Question>> topicQuestionsMap = new LinkedHashMap<>();
@@ -137,6 +156,58 @@ public class TopicTrendService {
         return doubleValues.stream()
                 .map(v -> (v - min) / (max - min))
                 .collect(Collectors.toList());
+    }
+
+    // 新增固定指标的数据构建方法
+    private Map<String, Object> buildTimeSeriesDataWithFixedMetric(Map<String, Set<Question>> dataMap, String chartType, String fixedMetric) {
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+        SortedSet<String> dates = new TreeSet<>();
+        Map<String, Map<String, List<Question>>> groupedData = new HashMap<>();
+
+        // 1. Group by Date
+        for (String key : dataMap.keySet()) {
+            Map<String, List<Question>> byDate = dataMap.get(key).stream()
+                    .collect(Collectors.groupingBy(q -> q.getCreationDate().format(fmt)));
+            groupedData.put(key, byDate);
+            dates.addAll(byDate.keySet());
+        }
+
+        // 2. Build Series with fixed metric data
+        Map<String, List<Number>> fixedMetricSeries = new LinkedHashMap<>();
+
+        for (String key : dataMap.keySet()) {
+            fixedMetricSeries.put(key, new ArrayList<>());
+        }
+
+        for (String date : dates) {
+            for (String key : dataMap.keySet()) {
+                List<Question> list = groupedData.get(key).getOrDefault(date, Collections.emptyList());
+
+                // 根据固定指标选择相应的数据
+                switch (fixedMetric) {
+                    case "count":
+                        fixedMetricSeries.get(key).add(list.size());
+                        break;
+                    case "score":
+                        fixedMetricSeries.get(key).add(list.stream().mapToLong(q -> q.getScore() == null ? 0 : q.getScore()).sum());
+                        break;
+                    case "views":
+                        fixedMetricSeries.get(key).add(list.stream().mapToLong(q -> q.getViewCount() == null ? 0 : q.getViewCount()).sum());
+                        break;
+                    case "answers":
+                        fixedMetricSeries.get(key).add(list.stream().mapToLong(q -> q.getAnswerCount() == null ? 0 : q.getAnswerCount()).sum());
+                        break;
+                    default:
+                        fixedMetricSeries.get(key).add(list.size());
+                        break;
+                }
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("dates", dates);
+        result.put("fixedMetricSeries", fixedMetricSeries);  // 固定指标数据
+        return result;
     }
 
     // 新增带归一化的数据构建方法

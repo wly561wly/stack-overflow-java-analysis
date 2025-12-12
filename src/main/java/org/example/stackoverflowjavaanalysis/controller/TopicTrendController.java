@@ -29,7 +29,7 @@ public class TopicTrendController {
     public String trendPage(Model model) {
         logger.info("正在加载趋势分析页面...");
         List<Topic> topics = topicService.getAllTopics();
-        
+
         // 调试日志：检查数据完整性
         logger.info("加载了 {} 个主题", topics.size());
         for (Topic t : topics) {
@@ -50,9 +50,10 @@ public class TopicTrendController {
             @RequestParam(required = false) String scopes,
             @RequestParam(defaultValue = "line") String chartType,
             @RequestParam(defaultValue = "compare") String mode,
+            @RequestParam(required = false) String fixedMetric, // 新增固定指标参数
             @RequestParam(defaultValue = "2020-01-01") String startDate,
             @RequestParam(defaultValue = "2024-12-31") String endDate) {
-        
+
         Map<String, Object> error = new HashMap<>();
 
         // 1. 校验搜索范围
@@ -69,8 +70,8 @@ public class TopicTrendController {
         }
 
         // 3. 校验对比数量
-        if ("compare".equalsIgnoreCase(mode) && topicIds.size() > 3) {
-            error.put("error", "对比模式最多只能选择 3 个主题。");
+        if (("compare".equalsIgnoreCase(mode) || "fixedMetric".equalsIgnoreCase(mode)) && topicIds.size() > 3) {
+            error.put("error", "对比模式和固定指标模式最多只能选择 3 个主题。");
             return ResponseEntity.badRequest().body(error);
         }
 
@@ -79,11 +80,11 @@ public class TopicTrendController {
                     ? new ArrayList<>()
                     : Arrays.stream(selectedKeywords.split(",")).map(String::trim).collect(Collectors.toList());
 
-            logger.info("查询趋势数据: topicIds={}, keywordsCount={}, scopes={}, mode={}", 
+            logger.info("查询趋势数据: topicIds={}, keywordsCount={}, scopes={}, mode={}",
                     topicIds, keywordList.size(), scopeList, mode);
 
             Map<String, Object> result = topicTrendService.getTrendData(
-                    topicIds, keywordList, scopeList, chartType, mode, startDate, endDate
+                    topicIds, keywordList, scopeList, chartType, mode, fixedMetric, startDate, endDate // 传递fixedMetric参数
             );
             return ResponseEntity.ok(result);
         } catch (Exception e) {

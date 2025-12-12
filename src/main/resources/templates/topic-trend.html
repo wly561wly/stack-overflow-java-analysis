@@ -6,40 +6,40 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; }
-        
+
         /* 修改 1: container 不再使用 flex，作为最外层包裹 */
         .container { max-width: 1400px; margin: 0 auto; }
-        
+
         /* 修改 2: 新增 content-wrapper 用于左右布局 */
         .content-wrapper { display: flex; gap: 20px; }
 
         /* 修改 3: Header 样式优化，增加白色背景和阴影，与下方风格统一 */
-        .header { 
-            background: white; 
-            padding: 15px 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            margin-bottom: 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: fit-content; }
         .main-content { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
+
         .topic-item { border-bottom: 1px solid #eee; padding: 8px 0; }
         .topic-header { display: flex; align-items: center; justify-content: space-between; }
         .keywords-panel { margin-left: 20px; margin-top: 5px; display: none; padding: 5px; background: #f8f9fa; border-radius: 4px; }
         .keyword-tag { display: inline-block; margin: 2px 5px; font-size: 0.9em; }
-        
+
         .controls-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .control-group { display: flex; flex-direction: column; gap: 5px; }
         .control-group label { font-weight: bold; font-size: 0.9em; color: #555; }
-        
+
         button.btn-primary { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         button.btn-sm { padding: 2px 6px; font-size: 0.8em; border: 1px solid #ddd; background: white; cursor: pointer; }
-        
+
         #chartContainer { width: 100%; height: 500px; }
         .pie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .pie-chart { height: 300px; }
@@ -70,10 +70,12 @@
         <div class="sidebar">
             <h3>主题筛选</h3>
             <div style="margin-bottom: 10px;">
+                <button class="btn-sm" onclick="toggleAllTopics(true)">全选</button>
+                <button class="btn-sm" onclick="toggleAllTopics(false)">全不选</button>
                 <button class="btn-sm" onclick="toggleAllKeywords(true)">全部展开</button>
                 <button class="btn-sm" onclick="toggleAllKeywords(false)">全部收起</button>
             </div>
-            
+
             <div id="topicList">
                 <div th:each="topic : ${topics}" class="topic-item">
                     <div class="topic-header">
@@ -85,7 +87,7 @@
                     </div>
                     <div class="keywords-panel">
                         <div style="margin-bottom: 5px; font-size: 0.8em;">
-                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
+                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> /
                             <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
                         </div>
                         <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
@@ -110,7 +112,7 @@
                         <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
                     </div>
                 </div>
-                
+
                 <div class="control-group">
                     <label>图表类型</label>
                     <select id="chartType">
@@ -125,6 +127,18 @@
                     <select id="mode">
                         <option value="compare">对比 (Max 3)</option>
                         <option value="integrate">整合</option>
+                        <option value="fixedMetric">固定指标</option>
+                    </select>
+                </div>
+
+                <!-- 新增固定指标选择控件 -->
+                <div class="control-group" id="fixedMetricGroup" style="display: none;">
+                    <label>固定指标</label>
+                    <select id="fixedMetric">
+                        <option value="count">问题数</option>
+                        <option value="score">点赞数</option>
+                        <option value="views">浏览数</option>
+                        <option value="answers">回答数</option>
                     </select>
                 </div>
 
@@ -156,6 +170,14 @@
 
     function toggleAllKeywords(show) {
         document.querySelectorAll('.keywords-panel').forEach(p => p.style.display = show ? 'block' : 'none');
+    }
+
+    // 新增：全选/全不选所有主题
+    function toggleAllTopics(select) {
+        document.querySelectorAll('.topic-cb').forEach(cb => {
+            cb.checked = select;
+            handleTopicChange(cb); // 触发主题变更处理逻辑
+        });
     }
 
     // 1. Topic 勾选 -> 全选/全不选其下的 Keywords
@@ -205,6 +227,16 @@
         updateTopicCheckbox(link.closest('.topic-item'));
     }
 
+    // 监听模式变化，控制固定指标控件的显示
+    document.getElementById('mode').addEventListener('change', function() {
+        const fixedMetricGroup = document.getElementById('fixedMetricGroup');
+        if (this.value === 'fixedMetric') {
+            fixedMetricGroup.style.display = 'flex';
+        } else {
+            fixedMetricGroup.style.display = 'none';
+        }
+    });
+
     // --- 图表逻辑 ---
     let mainChart = echarts.init(document.getElementById('chartContainer'));
     let pieCharts = [];
@@ -223,6 +255,7 @@
 
         const chartType = document.getElementById('chartType').value;
         const mode = document.getElementById('mode').value;
+        const fixedMetric = document.getElementById('fixedMetric').value;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
 
@@ -231,6 +264,7 @@
         if (scopes.length === 0) return alert("请至少选择一个搜索范围");
         if (chartType === 'pie' && mode === 'integrate') return alert("整合模式不支持饼图");
         if (mode === 'compare' && topicIds.length > 3) return alert("对比模式最多支持 3 个主题");
+        if (mode === 'fixedMetric' && topicIds.length > 3) return alert("固定指标模式最多支持 3 个主题");
 
         mainChart.showLoading();
 
@@ -240,6 +274,7 @@
         formData.append('scopes', scopes.join(','));
         formData.append('chartType', chartType);
         formData.append('mode', mode);
+        formData.append('fixedMetric', fixedMetric);
         formData.append('startDate', startDate);
         formData.append('endDate', endDate);
 
@@ -250,7 +285,7 @@
                 if (data.error) {
                     alert(data.error);
                 } else {
-                    renderCharts(data, chartType);
+                    renderCharts(data, chartType, mode);
                 }
             })
             .catch(err => {
@@ -260,7 +295,7 @@
             });
     }
 
-    function renderCharts(data, type) {
+    function renderCharts(data, type, mode) {
         const pieContainer = document.getElementById('pieContainer');
         const lineContainer = document.getElementById('chartContainer');
 
@@ -307,6 +342,9 @@
             // 检查是否是整合模式（只有series字段，没有originalSeries和normalizedSeries）
             const isIntegrateMode = !data.originalSeries && !data.normalizedSeries && data.series;
 
+            // 检查是否是固定指标模式
+            const isFixedMetricMode = mode === 'fixedMetric' && data.fixedMetricSeries;
+
             if (isIntegrateMode) {
                 // 整合模式：直接使用series数据
                 for (let key in data.series) {
@@ -314,6 +352,34 @@
                         name: key,
                         type: type, // line or bar
                         data: data.series[key],
+                        smooth: true
+                    });
+                }
+
+                mainChart.setOption({
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    legend: {
+                        top: 'bottom',
+                        type: 'scroll'
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: data.dates
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: series
+                }, true);
+            } else if (isFixedMetricMode) {
+                // 固定指标模式：使用特定指标的数据
+                for (let key in data.fixedMetricSeries) {
+                    series.push({
+                        name: key,
+                        type: type, // line or bar
+                        data: data.fixedMetricSeries[key],
                         smooth: true
                     });
                 }
@@ -447,7 +513,7 @@
             }
         }
     }
-    
+
     window.addEventListener('resize', () => {
         mainChart.resize();
         pieCharts.forEach(c => c.resize());
