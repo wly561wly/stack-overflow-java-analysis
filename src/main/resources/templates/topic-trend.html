@@ -233,12 +233,11 @@
             topicCb.checked = true;
             topicCb.indeterminate = false;
         } else {
-            // 半选：勾选（视觉上） + 设置半选状态
-            topicCb.checked = true; // 保持勾选状态（保证数据收集）
+            // 半选：不勾选 + 设置半选状态
+            topicCb.checked = false; // 不勾选，避免被误认为是主动勾选
             topicCb.indeterminate = true; // 显示半选样式
         }
     }
-
     function batchSelectKeywords(link, select) {
         const panel = link.closest('.keywords-panel');
         panel.querySelectorAll('.kw-cb').forEach(cb => {
@@ -261,10 +260,16 @@
     // --- 图表逻辑 ---
     let mainChart = echarts.init(document.getElementById('chartContainer'));
     let pieCharts = [];
-
     function queryData() {
         // 收集参数
-        const topicIds = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.value);
+        let topicIds = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.value);
+        document.querySelectorAll('.topic-cb').forEach(cb => {
+            if (!cb.checked && cb.indeterminate) {
+                // 如果主题未被勾选但处于半选状态，则将其加入查询
+                topicIds.push(cb.value);
+            }
+        });
+        topicIds = [...new Set(topicIds)];
         // 使用 Set 去重收集所有被选中的关键词
         const selectedKws = new Set();
         document.querySelectorAll('.kw-cb:checked').forEach(cb => selectedKws.add(cb.value));
