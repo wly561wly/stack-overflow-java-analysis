@@ -16,6 +16,9 @@
         .chart-row { display: flex; gap: 20px; margin-top: 20px; }
         .chart-box { flex: 1; height: 500px; border: 1px solid #eee; border-radius: 4px; padding: 10px; }
         a.nav-link { text-decoration: none; color: #007bff; font-weight: bold; }
+        .mode-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
+        .mode-btn { padding: 8px 15px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; }
+        .mode-btn.active { background: #007bff; color: white; }
     </style>
 </head>
 <body>
@@ -32,7 +35,12 @@
         </div>
     </div>
 
-    <div class="controls">
+    <div class="mode-toggle">
+        <button class="mode-btn active" onclick="switchMode('general')">总体共现分析</button>
+        <button class="mode-btn" onclick="switchMode('specific')">特定话题关联分析</button>
+    </div>
+
+    <div class="controls" id="generalControls">
         <div class="control-group">
             <label>时间范围</label>
             <div style="display: flex; gap: 5px;">
@@ -58,7 +66,43 @@
             </select>
         </div>
 
-        <button onclick="loadData()">分析关联</button>
+        <button onclick="loadGeneralData()">分析关联</button>
+    </div>
+
+    <div class="controls" id="specificControls" style="display: none;">
+        <div class="control-group">
+            <label>时间范围</label>
+            <div style="display: flex; gap: 5px;">
+                <input type="date" id="specificStartDate" value="2020-01-01">
+                <input type="date" id="specificEndDate" value="2024-12-31">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>选择话题</label>
+            <select id="specificTopic">
+                <option value="">请选择话题</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>度量指标</label>
+            <select id="specificMetric">
+                <option value="count">共现次数 (Count)</option>
+                <option value="heat">共现热度 (Score + Views)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <label>Top N (柱状图)</label>
+            <select id="specificTopN">
+                <option value="10">Top 10</option>
+                <option value="20">Top 20</option>
+                <option value="50">Top 50</option>
+            </select>
+        </div>
+
+        <button onclick="loadSpecificTopicData()">分析关联</button>
     </div>
 
     <div class="chart-row">
@@ -70,8 +114,49 @@
 <script>
     let heatmapChart = echarts.init(document.getElementById('heatmapChart'));
     let barChart = echarts.init(document.getElementById('barChart'));
+    let currentMode = 'general'; // 'general' or 'specific'
 
-    function loadData() {
+    // 页面加载时获取话题列表
+    window.onload = function() {
+        loadTopics();
+        loadGeneralData();
+    };
+
+    function switchMode(mode) {
+        currentMode = mode;
+
+        // 更新按钮状态
+        document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        // 显示/隐藏控件
+        document.getElementById('generalControls').style.display = mode === 'general' ? 'flex' : 'none';
+        document.getElementById('specificControls').style.display = mode === 'specific' ? 'flex' : 'none';
+
+        // 清空图表
+        heatmapChart.clear();
+        barChart.clear();
+    }
+
+    function loadTopics() {
+        fetch('/cooccurrence/topics')
+            .then(res => res.json())
+            .then(topics => {
+                const select = document.getElementById('specificTopic');
+                select.innerHTML = '<option value="">请选择话题</option>';
+                topics.forEach(topic => {
+                    const option = document.createElement('option');
+                    option.value = topic.id;
+                    option.textContent = topic.name;
+                    select.appendChild(option);
+                });
+            })
+            .catch(err => {
+                console.error('获取话题列表失败:', err);
+            });
+    }
+
+    function loadGeneralData() {
         heatmapChart.showLoading();
         barChart.showLoading();
 
@@ -90,12 +175,46 @@
                     alert(data.error);
                 } else {
                     renderHeatmap(data);
-                    renderBarChart(data);
+                    renderGeneralBarChart(data);
                 }
             })
             .catch(err => {
                 console.error(err);
                 heatmapChart.hideLoading();
+                barChart.hideLoading();
+                alert("请求失败");
+            });
+    }
+
+    function loadSpecificTopicData() {
+        const topicId = document.getElementById('specificTopic').value;
+        if (!topicId) {
+            alert('请选择一个话题');
+            return;
+        }
+
+        barChart.showLoading();
+        heatmapChart.clear(); // 特定话题分析不需要热力图
+
+        const formData = new FormData();
+        formData.append('startDate', document.getElementById('specificStartDate').value);
+        formData.append('endDate', document.getElementById('specificEndDate').value);
+        formData.append('metric', document.getElementById('specificMetric').value);
+        formData.append('topN', document.getElementById('specificTopN').value);
+        formData.append('topicId', topicId);
+
+        fetch('/cooccurrence/specific-topic-data', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                barChart.hideLoading();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    renderSpecificBarChart(data);
+                }
+            })
+            .catch(err => {
+                console.error(err);
                 barChart.hideLoading();
                 alert("请求失败");
             });
@@ -127,9 +246,27 @@
         heatmapChart.setOption(option);
     }
 
-    function renderBarChart(data) {
+    function renderGeneralBarChart(data) {
         const option = {
             title: { text: '高频共现主题对 (Top N)', left: 'center' },
+            tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
+            xAxis: { type: 'value' },
+            yAxis: { type: 'category', data: data.barX, inverse: true }, // inverse 让第一名在上面
+            series: [{
+                name: '数值',
+                type: 'bar',
+                data: data.barY,
+                itemStyle: { color: '#5470c6' }
+            }]
+        };
+        barChart.setOption(option);
+    }
+
+    function renderSpecificBarChart(data) {
+        const title = data.topicName ? `与 "${data.topicName}" 关联度最高的话题 (Top N)` : '话题关联度分析 (Top N)';
+        const option = {
+            title: { text: title, left: 'center' },
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
             grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
             xAxis: { type: 'value' },
@@ -148,9 +285,6 @@
         heatmapChart.resize();
         barChart.resize();
     });
-
-    // 初始加载
-    loadData();
 </script>
 </body>
 </html>
