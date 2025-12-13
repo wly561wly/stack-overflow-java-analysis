@@ -25,13 +25,13 @@ public class MultithreadingPitfallService {
     // 陷阱类型定义与关键词绑定
     private static final Map<String, List<String>> PITFALL_DEFINITIONS = new LinkedHashMap<>();
     static {
-        PITFALL_DEFINITIONS.put("Deadlock (死锁)", Arrays.asList("deadlock", "dead-lock", "hang", "stuck"));
-        PITFALL_DEFINITIONS.put("Race Condition (竞态条件)", Arrays.asList("race condition", "race-condition", "data race", "inconsistent"));
-        PITFALL_DEFINITIONS.put("Thread Safety (线程安全)", Arrays.asList("thread safe", "thread-safe", "not safe", "unsafe", "synchroniz"));
-        PITFALL_DEFINITIONS.put("Memory Visibility (内存可见性)", Arrays.asList("visibility", "volatile", "memory model", "jmm"));
-        PITFALL_DEFINITIONS.put("Performance (性能问题)", Arrays.asList("performance", "slow", "overhead", "context switch", "throughput"));
-        PITFALL_DEFINITIONS.put("Thread Pool (线程池配置)", Arrays.asList("thread pool", "executor", "pool size", "queue full", "rejected"));
-        PITFALL_DEFINITIONS.put("Exception Handling (异常处理)", Arrays.asList("exception", "uncaught", "interrupted", "swallow"));
+        PITFALL_DEFINITIONS.put("Deadlock", Arrays.asList("deadlock", "dead-lock", "hang", "stuck"));
+        PITFALL_DEFINITIONS.put("Race Condition", Arrays.asList("race condition", "race-condition", "data race", "inconsistent"));
+        PITFALL_DEFINITIONS.put("Thread Safety", Arrays.asList("thread safe", "thread-safe", "not safe", "unsafe", "synchroniz"));
+        PITFALL_DEFINITIONS.put("Memory Visibility", Arrays.asList("visibility", "volatile", "memory model", "jmm"));
+        PITFALL_DEFINITIONS.put("Performance", Arrays.asList("performance", "slow", "overhead", "context switch", "throughput"));
+        PITFALL_DEFINITIONS.put("Thread Pool", Arrays.asList("thread pool", "executor", "pool size", "queue full", "rejected"));
+        PITFALL_DEFINITIONS.put("Exception Handling", Arrays.asList("exception", "uncaught", "interrupted", "swallow"));
     }
 
     // 内部类：用于统计陷阱指标
@@ -86,7 +86,7 @@ public class MultithreadingPitfallService {
         // 去重
         questions = questions.stream().distinct().collect(Collectors.toList());
 
-        logger.info("分析多线程陷阱: 基础问题数={}", questions.size());
+        logger.info("Multithreading pitfall analysis: base questions={}", questions.size());
 
         // 2. 识别陷阱并统计
         // Map<PitfallType, Stats>

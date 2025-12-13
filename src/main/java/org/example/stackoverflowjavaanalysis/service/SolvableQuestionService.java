@@ -108,7 +108,7 @@ public class SolvableQuestionService {
                     .collect(Collectors.toList());
         }
 
-        logger.info("分析可解决性: 问题总数={}", questions.size());
+        logger.info("Solvable analysis: total questions={}", questions.size());
 
         // 2. 分类统计
         CategoryStats solvableStats = new CategoryStats();
@@ -162,12 +162,12 @@ public class SolvableQuestionService {
 
         // 1. 饼图 (数量占比)
         List<Map<String, Object>> pieData = new ArrayList<>();
-        pieData.add(Map.of("name", "Solvable (可解决)", "value", solvable.count));
-        pieData.add(Map.of("name", "Hard-to-Solve (难解决)", "value", hard.count));
+        pieData.add(Map.of("name", "Solvable", "value", solvable.count));
+        pieData.add(Map.of("name", "Hard-to-Solve", "value", hard.count));
         result.put("pieData", pieData);
 
         // 2. 柱状图 (核心指标对比) - 这些值已经通过CategoryStats中的方法进行了格式化
-        result.put("barX", Arrays.asList("平均点赞", "平均浏览", "平均回答", "优质占比(%)"));
+        result.put("barX", Arrays.asList("Avg Score", "Avg Views", "Avg Answers", "Quality Rate (%)"));
         result.put("barSolvable", Arrays.asList(
             solvable.getAvgScore(), 
             solvable.getAvgViews(), 
@@ -183,11 +183,11 @@ public class SolvableQuestionService {
 
         // 3. 雷达图 (综合维度) - 这些值也会被格式化
         List<Map<String, Object>> radarIndicator = new ArrayList<>();
-        radarIndicator.add(Map.of("name", "数量 (Count)", "max", Math.max(solvable.count, hard.count) * 1.2));
-        radarIndicator.add(Map.of("name", "热度 (Score)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgScore(), hard.getAvgScore()) * 1.2)));
-        radarIndicator.add(Map.of("name", "关注 (Views)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgViews(), hard.getAvgViews()) * 1.2)));
-        radarIndicator.add(Map.of("name", "互动 (Answers)", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgAnswers(), hard.getAvgAnswers()) * 1.2)));
-        radarIndicator.add(Map.of("name", "质量 (Quality)", "max", 100));
+        radarIndicator.add(Map.of("name", "Count", "max", Math.max(solvable.count, hard.count) * 1.2));
+        radarIndicator.add(Map.of("name", "Score", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgScore(), hard.getAvgScore()) * 1.2)));
+        radarIndicator.add(Map.of("name", "Views", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgViews(), hard.getAvgViews()) * 1.2)));
+        radarIndicator.add(Map.of("name", "Answers", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgAnswers(), hard.getAvgAnswers()) * 1.2)));
+        radarIndicator.add(Map.of("name", "Quality", "max", 100));
         result.put("radarIndicator", radarIndicator);
         
         result.put("radarSolvable", Arrays.asList(

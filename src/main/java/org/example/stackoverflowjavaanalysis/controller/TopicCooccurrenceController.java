@@ -40,11 +40,11 @@ public class TopicCooccurrenceController {
             @RequestParam(defaultValue = "count") String metric // count or heat
     ) {
         try {
-            logger.info("获取共现数据: start={}, end={}, metric={}", startDate, endDate, metric);
+            logger.info("Get cooccurrence data: start={}, end={}, topN={}, metric={}", startDate, endDate, topN, metric);
             Map<String, Object> data = cooccurrenceService.getCooccurrenceData(startDate, endDate, topN, metric);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
-            logger.error("共现分析失败", e);
+            logger.error("Cooccurrence analysis failed", e);
             Map<String, Object> err = new HashMap<>();
             err.put("error", e.getMessage());
             return ResponseEntity.status(500).body(err);
@@ -61,7 +61,7 @@ public class TopicCooccurrenceController {
             List<Topic> topics = topicService.getAllTopics();
             return ResponseEntity.ok(topics);
         } catch (Exception e) {
-            logger.error("获取话题列表失败", e);
+            logger.error("Failed to get topics list", e);
             return ResponseEntity.status(500).build();
         }
     }
@@ -79,11 +79,11 @@ public class TopicCooccurrenceController {
             @RequestParam(required = false) Long topicId
     ) {
         try {
-            logger.info("获取指定话题关联数据: start={}, end={}, metric={}, topicId={}", startDate, endDate, metric, topicId);
+            logger.info("Get specific-topic cooccurrence data: start={}, end={}, metric={}, topicId={}", startDate, endDate, metric, topicId);
             Map<String, Object> data = cooccurrenceService.getSpecificTopicCooccurrenceData(startDate, endDate, topN, metric, topicId);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
-            logger.error("指定话题关联分析失败", e);
+            logger.error("Specific-topic cooccurrence analysis failed", e);
             Map<String, Object> err = new HashMap<>();
             err.put("error", e.getMessage());
             return ResponseEntity.status(500).body(err);

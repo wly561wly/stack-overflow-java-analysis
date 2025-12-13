@@ -39,11 +39,11 @@ public class SolvableQuestionController {
             @RequestParam(required = false) Long topicId
     ) {
         try {
-            logger.info("获取可解决性数据: start={}, end={}, topicId={}", startDate, endDate, topicId);
+            logger.info("Get solvable analysis data: start={}, end={}, topicId={}", startDate, endDate, topicId);
             Map<String, Object> data = solvableService.getComparisonData(startDate, endDate, topicId);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
-            logger.error("可解决性分析失败", e);
+            logger.error("Solvable analysis failed", e);
             Map<String, Object> err = new HashMap<>();
             err.put("error", e.getMessage());
             return ResponseEntity.status(500).body(err);
