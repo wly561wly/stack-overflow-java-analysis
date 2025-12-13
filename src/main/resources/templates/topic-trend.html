@@ -6,40 +6,36 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; }
-
-        /* 修改 1: container 不再使用 flex，作为最外层包裹 */
+        
         .container { max-width: 1400px; margin: 0 auto; }
-
-        /* 修改 2: 新增 content-wrapper 用于左右布局 */
         .content-wrapper { display: flex; gap: 20px; }
 
-        /* 修改 3: Header 样式优化，增加白色背景和阴影，与下方风格统一 */
-        .header {
-            background: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .header { 
+            background: white; 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            margin-bottom: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
         }
 
         .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: fit-content; }
         .main-content { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-
+        
         .topic-item { border-bottom: 1px solid #eee; padding: 8px 0; }
         .topic-header { display: flex; align-items: center; justify-content: space-between; }
         .keywords-panel { margin-left: 20px; margin-top: 5px; display: none; padding: 5px; background: #f8f9fa; border-radius: 4px; }
         .keyword-tag { display: inline-block; margin: 2px 5px; font-size: 0.9em; }
-
+        
         .controls-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .control-group { display: flex; flex-direction: column; gap: 5px; }
         .control-group label { font-weight: bold; font-size: 0.9em; color: #555; }
-
+        
         button.btn-primary { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         button.btn-sm { padding: 2px 6px; font-size: 0.8em; border: 1px solid #ddd; background: white; cursor: pointer; }
-
+        
         #chartContainer { width: 100%; height: 500px; }
         .pie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .pie-chart { height: 300px; }
@@ -47,12 +43,19 @@
         h2 { font-size: 1.5em; color: #333; margin: 0; }
         a { color: #007bff; text-decoration: none; }
         a:hover { text-decoration: underline; }
+
+        /* 图例控制表格样式 */
+        .legend-table-container { margin-top: 20px; border: 1px solid #eee; border-radius: 4px; padding: 10px; background: #fafafa; display: none; }
+        .legend-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        .legend-table th, .legend-table td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .legend-table th { background-color: #f1f1f1; font-weight: bold; }
+        .legend-table td:first-child, .legend-table th:first-child { text-align: left; font-weight: bold; background-color: #f9f9f9; }
+        .legend-cb { cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <!-- Header 独立在最上方 -->
     <div class="header">
         <h2>主题趋势分析</h2>
         <div style="font-size: 0.9em;">
@@ -64,30 +67,31 @@
         </div>
     </div>
 
-    <!-- 新增 content-wrapper 包裹左右两栏 -->
     <div class="content-wrapper">
-        <!-- 左侧：主题与关键词选择 -->
         <div class="sidebar">
             <h3>主题筛选</h3>
-            <div style="margin-bottom: 10px;">
-                <button class="btn-sm" onclick="toggleAllTopics(true)">全选</button>
-                <button class="btn-sm" onclick="toggleAllTopics(false)">全不选</button>
-                <button class="btn-sm" onclick="toggleAllKeywords(true)">全部展开</button>
-                <button class="btn-sm" onclick="toggleAllKeywords(false)">全部收起</button>
+            <!-- 修复：恢复 Topic 全选/全不选按钮 -->
+            <div style="margin-bottom: 10px; display: flex; gap: 5px;">
+                <button class="btn-sm" onclick="toggleAllTopics(true)">全选主题</button>
+                <button class="btn-sm" onclick="toggleAllTopics(false)">清空主题</button>
             </div>
-
+            <div style="margin-bottom: 10px;">
+                <button class="btn-sm" onclick="toggleAllKeywords(true)">展开所有关键词</button>
+                <button class="btn-sm" onclick="toggleAllKeywords(false)">收起所有关键词</button>
+            </div>
+            
             <div id="topicList">
                 <div th:each="topic : ${topics}" class="topic-item">
                     <div class="topic-header">
                         <label>
-                            <input type="checkbox" class="topic-cb" th:value="${topic.id}" checked onchange="handleTopicChange(this)">
+                            <input type="checkbox" class="topic-cb" th:value="${topic.id}" th:data-name="${topic.name}" checked onchange="handleTopicChange(this)">
                             <span th:text="${topic.name}" style="font-weight: bold;">Topic</span>
                         </label>
                         <button class="btn-sm" onclick="toggleKeywords(this)">展开</button>
                     </div>
                     <div class="keywords-panel">
                         <div style="margin-bottom: 5px; font-size: 0.8em;">
-                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> /
+                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
                             <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
                         </div>
                         <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
@@ -101,18 +105,17 @@
             </div>
         </div>
 
-        <!-- 右侧：控制与图表 -->
         <div class="main-content">
             <div class="controls-row">
                 <div class="control-group">
-                    <label>搜索范围 (必选其一)</label>
+                    <label>搜索范围</label>
                     <div>
                         <label><input type="checkbox" id="scope_tag" checked> Tag</label>
                         <label><input type="checkbox" id="scope_title" checked> Title</label>
                         <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
                     </div>
                 </div>
-
+                
                 <div class="control-group">
                     <label>图表类型</label>
                     <select id="chartType">
@@ -127,18 +130,6 @@
                     <select id="mode">
                         <option value="compare">对比 (Max 3)</option>
                         <option value="integrate">整合</option>
-                        <option value="fixedMetric">固定指标</option>
-                    </select>
-                </div>
-
-                <!-- 新增固定指标选择控件 -->
-                <div class="control-group" id="fixedMetricGroup" style="display: none;">
-                    <label>固定指标</label>
-                    <select id="fixedMetric">
-                        <option value="count">问题数</option>
-                        <option value="score">点赞数</option>
-                        <option value="views">浏览数</option>
-                        <option value="answers">回答数</option>
                     </select>
                 </div>
 
@@ -154,6 +145,14 @@
             </div>
 
             <div id="chartContainer"></div>
+            
+            <div id="legendTableContainer" class="legend-table-container">
+                <h4>图表显示控制</h4>
+                <table class="legend-table" id="legendTable">
+                    <!-- 动态生成内容 -->
+                </table>
+            </div>
+
             <div id="pieContainer" class="pie-grid" style="display: none;"></div>
         </div>
     </div>
@@ -161,6 +160,15 @@
 
 <script>
     // --- 交互逻辑 ---
+    
+    // 1. Topic 全选/全不选
+    function toggleAllTopics(select) {
+        document.querySelectorAll('.topic-cb').forEach(cb => {
+            cb.checked = select;
+            cb.indeterminate = false;
+            handleTopicChange(cb); // 触发联动
+        });
+    }
 
     function toggleKeywords(btn) {
         const panel = btn.parentElement.nextElementSibling;
@@ -172,70 +180,52 @@
         document.querySelectorAll('.keywords-panel').forEach(p => p.style.display = show ? 'block' : 'none');
     }
 
-    // 新增：全选/全不选所有主题
-    function toggleAllTopics(select) {
-        document.querySelectorAll('.topic-cb').forEach(cb => {
-            cb.checked = select;
-            // 清除半选状态
-            cb.indeterminate = false;
-            handleTopicChange(cb); // 触发主题变更处理逻辑
-        });
-    }
-
-    // 1. Topic 勾选 -> 全选/全不选其下的 Keywords
     function handleTopicChange(topicCb) {
         const panel = topicCb.closest('.topic-item').querySelector('.keywords-panel');
         const kws = panel.querySelectorAll('.kw-cb');
-        // 清除半选状态
+        // 清除半选状态（用户主动操作视为明确选择或取消）
         topicCb.indeterminate = false;
         kws.forEach(cb => {
             cb.checked = topicCb.checked;
-            syncKeywordGlobally(cb); // 触发全局同步
+            syncKeywordGlobally(cb);
         });
     }
 
-    // 2. Keyword 勾选 -> 同步其他 Topic 的相同 Keyword -> 更新 Topic 勾选状态
     function handleKeywordChange(kwCb) {
         syncKeywordGlobally(kwCb);
         updateTopicCheckbox(kwCb.closest('.topic-item'));
     }
 
-    // 全局同步：找到所有 data-kw 相同的 checkbox 并设为相同状态
     function syncKeywordGlobally(sourceCb) {
         const kw = sourceCb.getAttribute('data-kw');
         const isChecked = sourceCb.checked;
         document.querySelectorAll(`.kw-cb[data-kw="${kw}"]`).forEach(cb => {
             if (cb !== sourceCb) {
                 cb.checked = isChecked;
-                // 被动更新的 checkbox 也要触发其父 Topic 的状态更新
                 updateTopicCheckbox(cb.closest('.topic-item'));
             }
         });
     }
 
-    // 核心修改：更新 Topic 状态（支持半选）
     function updateTopicCheckbox(topicItem) {
         const topicCb = topicItem.querySelector('.topic-cb');
         const kws = topicItem.querySelectorAll('.kw-cb');
-        const total = kws.length;
+        if (!topicCb) return;
         let checkedCount = 0;
+        kws.forEach(k => { if (k.checked) checkedCount++; });
 
-        // 统计选中的关键词数量
-        kws.forEach(k => { if(k.checked) checkedCount++; });
-
-        // 三种状态处理：
-        if (checkedCount === 0) {
-            // 全不选：取消勾选 + 清除半选
-            topicCb.checked = false;
-            topicCb.indeterminate = false;
-        } else if (checkedCount === total) {
-            // 全选：勾选 + 清除半选
+        // 全选 -> checked true, indeterminate false
+        if (checkedCount === kws.length && kws.length > 0) {
             topicCb.checked = true;
             topicCb.indeterminate = false;
+        } else if (checkedCount === 0) {
+            // 全不选 -> checked false, indeterminate false
+            topicCb.checked = false;
+            topicCb.indeterminate = false;
         } else {
-            // 半选：勾选（视觉上） + 设置半选状态
-            topicCb.checked = true; // 保持勾选状态（保证数据收集）
-            topicCb.indeterminate = true; // 显示半选样式
+            // 部分选中 -> 显示半选
+            topicCb.checked = false; // 不将其视为主动勾选
+            topicCb.indeterminate = true;
         }
     }
 
@@ -248,27 +238,31 @@
         updateTopicCheckbox(link.closest('.topic-item'));
     }
 
-    // 监听模式变化，控制固定指标控件的显示
-    document.getElementById('mode').addEventListener('change', function() {
-        const fixedMetricGroup = document.getElementById('fixedMetricGroup');
-        if (this.value === 'fixedMetric') {
-            fixedMetricGroup.style.display = 'flex';
-        } else {
-            fixedMetricGroup.style.display = 'none';
-        }
-    });
-
     // --- 图表逻辑 ---
     let mainChart = echarts.init(document.getElementById('chartContainer'));
     let pieCharts = [];
+    // 全局变量存储用户在表格中的勾选状态： key = seriesName, value = boolean
+    // 放在这里确保不会被 queryData 重置
+    let legendState = {}; 
 
     function queryData() {
-        // 收集参数
-        const topicIds = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.value);
+        // 收集参数：包括被勾选和处于半选(indeterminate)的 Topic
+        let topicIds = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.value);
+        let topicNames = Array.from(document.querySelectorAll('.topic-cb:checked')).map(c => c.getAttribute('data-name'));
+        document.querySelectorAll('.topic-cb').forEach(cb => {
+            if (!cb.checked && cb.indeterminate) {
+                // 如果主题未被勾选但处于半选状态，则将其加入查询
+                topicIds.push(cb.value);
+                topicNames.push(cb.getAttribute('data-name'));
+            }
+        });
+        topicIds = [...new Set(topicIds)];
+        topicNames = [...new Set(topicNames)];
+
         // 使用 Set 去重收集所有被选中的关键词
         const selectedKws = new Set();
         document.querySelectorAll('.kw-cb:checked').forEach(cb => selectedKws.add(cb.value));
-
+        
         const scopes = [];
         if(document.getElementById('scope_tag').checked) scopes.push('tag');
         if(document.getElementById('scope_title').checked) scopes.push('title');
@@ -276,16 +270,13 @@
 
         const chartType = document.getElementById('chartType').value;
         const mode = document.getElementById('mode').value;
-        const fixedMetric = document.getElementById('fixedMetric').value;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
 
-        // 前端校验
         if (topicIds.length === 0) return alert("请至少选择一个主题");
         if (scopes.length === 0) return alert("请至少选择一个搜索范围");
         if (chartType === 'pie' && mode === 'integrate') return alert("整合模式不支持饼图");
         if (mode === 'compare' && topicIds.length > 3) return alert("对比模式最多支持 3 个主题");
-        if (mode === 'fixedMetric' && topicIds.length > 3) return alert("固定指标模式最多支持 3 个主题");
 
         mainChart.showLoading();
 
@@ -295,20 +286,19 @@
         formData.append('scopes', scopes.join(','));
         formData.append('chartType', chartType);
         formData.append('mode', mode);
-        formData.append('fixedMetric', fixedMetric);
         formData.append('startDate', startDate);
         formData.append('endDate', endDate);
 
         fetch('/trend/data', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
-                mainChart.hideLoading();
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    renderCharts(data, chartType, mode);
-                }
-            })
+                    mainChart.hideLoading();
+                    if (data.error) {
+                        alert(data.error);
+                    } else {
+                        renderCharts(data, chartType, topicNames, mode);
+                    }
+                })
             .catch(err => {
                 mainChart.hideLoading();
                 console.error(err);
@@ -316,35 +306,33 @@
             });
     }
 
-    function renderCharts(data, type, mode) {
+    function renderCharts(data, type, topicNames, mode) {
         const pieContainer = document.getElementById('pieContainer');
         const lineContainer = document.getElementById('chartContainer');
-
-        // 清理旧饼图
+        const legendTableContainer = document.getElementById('legendTableContainer');
+        
         pieContainer.innerHTML = '';
         pieCharts.forEach(c => c.dispose());
         pieCharts = [];
 
         if (type === 'pie') {
             lineContainer.style.display = 'none';
+            legendTableContainer.style.display = 'none';
             pieContainer.style.display = 'grid';
-
+            
             const metrics = ['questionCount', 'viewCount', 'answerCount', 'score'];
             const titles = ['问题数', '浏览数', '回答数', '点赞数'];
-
+            
             metrics.forEach((m, idx) => {
                 const div = document.createElement('div');
                 div.className = 'pie-chart';
                 pieContainer.appendChild(div);
-
                 const chart = echarts.init(div);
                 pieCharts.push(chart);
-
                 const pieData = [];
                 for (let topic in data.pies[m]) {
                     pieData.push({ name: topic, value: data.pies[m][topic] });
                 }
-
                 chart.setOption({
                     title: { text: titles[idx], left: 'center' },
                     tooltip: { trigger: 'item' },
@@ -355,196 +343,250 @@
         } else {
             lineContainer.style.display = 'block';
             pieContainer.style.display = 'none';
-            mainChart.resize(); // 确保显示
+            legendTableContainer.style.display = 'block';
+            mainChart.resize();
 
-            // 处理归一化数据
             const series = [];
+            const availableSeriesNames = [];
 
-            // 检查是否是整合模式（只有series字段，没有originalSeries和normalizedSeries）
-            const isIntegrateMode = !data.originalSeries && !data.normalizedSeries && data.series;
+            // 兼容后端不同的返回字段
+            // compare/integrate 模式返回 normalizedSeries (归一化) 和 originalSeries
+            // fixedMetric 模式返回 fixedMetricSeries
+            // 优先使用 normalizedSeries 以展示趋势，如果没有则尝试其他
+            let sourceData = data.normalizedSeries || data.fixedMetricSeries || data.series || data.originalSeries || {};
 
-            // 检查是否是固定指标模式
-            const isFixedMetricMode = mode === 'fixedMetric' && data.fixedMetricSeries;
+            for (let key in sourceData) {
+                availableSeriesNames.push(key);
+                series.push({
+                    name: key,
+                    type: type,
+                    data: sourceData[key],
+                    smooth: true
+                });
+            }
 
-            if (isIntegrateMode) {
-                // 整合模式：直接使用series数据
-                for (let key in data.series) {
-                    series.push({
-                        name: key,
-                        type: type, // line or bar
-                        data: data.series[key],
-                        smooth: true
-                    });
+            // 构建 legend selected 对象
+            const legendSelected = {};
+            availableSeriesNames.forEach(name => {
+                // 状态保持：如果 legendState 中有记录，用记录值；否则默认 true
+                if (!legendState.hasOwnProperty(name)) {
+                    legendState[name] = true;
                 }
+                legendSelected[name] = legendState[name];
+            });
 
-                mainChart.setOption({
-                    tooltip: {
-                        trigger: 'axis'
-                    },
-                    legend: {
-                        top: 'bottom',
-                        type: 'scroll'
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: data.dates
-                    },
-                    yAxis: {
-                        type: 'value'
-                    },
-                    series: series
-                }, true);
-            } else if (isFixedMetricMode) {
-                // 固定指标模式：使用特定指标的数据
-                for (let key in data.fixedMetricSeries) {
-                    series.push({
-                        name: key,
-                        type: type, // line or bar
-                        data: data.fixedMetricSeries[key],
-                        smooth: true
-                    });
-                }
+            // 初始 Option
+            mainChart.setOption({
+                tooltip: { trigger: 'axis' },
+                legend: { 
+                    show: false, // 隐藏默认图例，使用自定义表格
+                    data: availableSeriesNames,
+                    selected: legendSelected
+                },
+                grid: { top: 30, bottom: 30, left: 50, right: 50 },
+                xAxis: { type: 'category', data: data.dates },
+                yAxis: { type: 'value' },
+                series: series
+            }, true); // true = clear old
 
-                mainChart.setOption({
-                    tooltip: {
-                        trigger: 'axis'
-                    },
-                    legend: {
-                        top: 'bottom',
-                        type: 'scroll'
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: data.dates
-                    },
-                    yAxis: {
-                        type: 'value'
-                    },
-                    series: series
-                }, true);
-            } else {
-                // 对比模式：处理归一化数据
-                const originalSeries = data.originalSeries || data.series;
-                const normalizedSeries = data.normalizedSeries || data.series;
+            // 生成表格（传递 mode，用于整合模式 special-case）
+            generateLegendTable(topicNames, availableSeriesNames, mode);
+        }
+    }
 
-                // 创建指标映射关系，用于tooltip显示原始值
-                const metricNames = {
-                    '_count': '问题数',
-                    '_score': '点赞数',
-                    '_views': '浏览数',
-                    '_answers': '回答数'
-                };
+    function generateLegendTable(topicNames, availableSeriesNames, mode) {
+        const table = document.getElementById('legendTable');
+        table.innerHTML = '';
 
-                // 为每个系列创建图表数据
-                for (let key in normalizedSeries) {
-                    // 只处理归一化数据系列
-                    if (key.endsWith('_normalized')) {
-                        // 获取对应的原始数据系列名
-                        const originalKey = key.replace('_normalized', '');
+        // 整合模式特殊处理：只显示一行 "ALL"
+        let displayTopics = topicNames;
+        if (mode === 'integrate') {
+            displayTopics = ['ALL'];
+        }
 
-                        series.push({
-                            name: key.replace('_normalized', ''),
-                            type: type, // line or bar
-                            data: normalizedSeries[key],
-                            smooth: true,
-                            // 自定义tooltip formatter以显示原始值
-                            tooltip: {
-                                formatter: function(params) {
-                                    // 获取原始值
-                                    const originalData = originalSeries[originalKey];
-                                    const originalValue = originalData ? originalData[params.dataIndex] : 'N/A';
+        const metrics = [
+            { key: 'questionCount', match: ['_count', 'questionCount'], label: '问题数' },
+            { key: 'viewCount', match: ['_views', 'viewCount'], label: '浏览数' },
+            { key: 'answerCount', match: ['_answers', 'answerCount'], label: '回答数' },
+            { key: 'score', match: ['_score', 'score'], label: '点赞数' }
+        ];
 
-                                    // 获取指标名称
-                                    let metricName = '';
-                                    for (let suffix in metricNames) {
-                                        if (originalKey.endsWith(suffix)) {
-                                            metricName = metricNames[suffix];
-                                            break;
-                                        }
-                                    }
+        // 表头
+        const thead = document.createElement('tr');
+        thead.innerHTML = '<th>Topic \\ Metric</th>';
+        metrics.forEach(m => {
+            thead.innerHTML += `
+                <th>
+                    <label>
+                        <input type="checkbox" class="col-select" data-metric="${m.key}" checked onchange="toggleColumn(this)">
+                        ${m.label}
+                    </label>
+                </th>`;
+        });
+        table.appendChild(thead);
 
-                                    return `${params.seriesName}<br />
-                                        ${metricName}: ${originalValue}<br />
-                                        归一化值: ${params.value.toFixed(4)}`;
-                                }
-                            }
-                        });
+        // 表体
+        displayTopics.forEach(topic => {
+            const isIntegrateRow = (mode === 'integrate' && topic === 'ALL');
+            const displayName = isIntegrateRow ? '整合数据 (All Selected)' : topic;
+            
+            const tr = document.createElement('tr');
+            
+            // 如果是整合模式，行头禁用且默认选中
+            const rowCheckboxHtml = isIntegrateRow 
+                ? `<input type="checkbox" class="row-select" data-topic="${topic}" checked disabled>`
+                : `<input type="checkbox" class="row-select" data-topic="${topic}" checked onchange="toggleRow(this)">`;
+
+            tr.innerHTML = `
+                <td>
+                    <label>
+                        ${rowCheckboxHtml}
+                        ${displayName}
+                    </label>
+                </td>`;
+            
+            metrics.forEach(m => {
+                // 匹配后端返回的 Series Name
+                let matchedName = null;
+                for (let sName of availableSeriesNames) {
+                    // 模糊匹配：包含 Topic 名
+                    if (sName.toLowerCase().indexOf(topic.toLowerCase()) === -1) continue;
+                    
+                    // 且包含 Metric 关键字
+                    let isMetricMatch = false;
+                    for(let matchKey of m.match) {
+                        if (sName.indexOf(matchKey) !== -1) {
+                            isMetricMatch = true;
+                            break;
+                        }
+                    }
+                    
+                    if (isMetricMatch) {
+                        matchedName = sName;
+                        break;
                     }
                 }
 
-                mainChart.setOption({
-                    tooltip: {
-                        trigger: 'axis',
-                        formatter: function(params) {
-                            let result = `${params[0].axisValue}<br />`;
-                            params.forEach(param => {
-                                // 获取原始值
-                                const originalKey = param.seriesName;
-                                let originalValue = 'N/A';
+                if (matchedName) {
+                    // 状态保持：如果 legendState 中有记录，用记录值；否则默认 true
+                    if (!legendState.hasOwnProperty(matchedName)) {
+                        legendState[matchedName] = true;
+                    }
+                    const isChecked = legendState[matchedName];
 
-                                // 根据系列名找到对应的原始数据
-                                if (originalSeries) {
-                                    for (let key in originalSeries) {
-                                        if (key === originalKey) {
-                                            originalValue = originalSeries[key][param.dataIndex];
-                                            break;
-                                        }
-                                    }
-                                }
+                    tr.innerHTML += `
+                        <td>
+                            <input type="checkbox" class="legend-cb" 
+                                   data-topic="${topic}" data-metric="${m.key}" data-name="${matchedName}" 
+                                   ${isChecked ? 'checked' : ''} 
+                                   onchange="toggleSeries(this)">
+                        </td>`;
+                } else {
+                    tr.innerHTML += `<td style="color:#ccc; font-size:0.8em;">-</td>`;
+                }
+            });
+            table.appendChild(tr);
+        });
 
-                                // 获取指标名称
-                                let metricName = '';
-                                for (let suffix in metricNames) {
-                                    if (originalKey.endsWith(suffix)) {
-                                        metricName = metricNames[suffix];
-                                        break;
-                                    }
-                                }
+        // 初始化表头勾选状态
+        displayTopics.forEach(topic => updateRowHeaderState(topic));
+        metrics.forEach(m => updateColHeaderState(m.key));
+    }
 
-                                result += `${param.marker} ${param.seriesName}: ${originalValue} (${metricName})<br />`;
-                            });
-                            return result;
-                        }
-                    },
-                    legend: {
-                        top: 'bottom',
-                        type: 'scroll',
-                        formatter: function(name) {
-                            // 在图例中显示指标类型
-                            let metricName = '';
-                            for (let suffix in metricNames) {
-                                if (name.endsWith(suffix)) {
-                                    metricName = metricNames[suffix];
-                                    break;
-                                }
-                            }
-                            return `${name} (${metricName})`;
-                        }
-                    },
-                    xAxis: {
-                        type: 'category',
-                        data: data.dates
-                    },
-                    yAxis: {
-                        type: 'value',
-                        name: '归一化值 (0-1)'
-                    },
-                    series: series
-                }, true); // true = not merge, clear old
-            }
+    // applyLegendStateToChart 函数不再需要，因为我们在 setOption 中直接设置了 selected
+    function applyLegendStateToChart() {
+        // Deprecated
+    }
+
+    // 单个 Series 切换
+    function toggleSeries(cb) {
+        const name = cb.getAttribute('data-name');
+        const isChecked = cb.checked;
+        
+        // 更新全局状态
+        legendState[name] = isChecked;
+
+        mainChart.dispatchAction({
+            type: isChecked ? 'legendSelect' : 'legendUnSelect',
+            name: name
+        });
+
+        // 联动更新行列标题状态
+        updateRowHeaderState(cb.getAttribute('data-topic'));
+        updateColHeaderState(cb.getAttribute('data-metric'));
+    }
+
+    // 切换整行 (Topic)
+    function toggleRow(rowCb) {
+        const topic = rowCb.getAttribute('data-topic');
+        const targetState = rowCb.checked;
+        // 用户主动点击行头视为明确操作，清除半选
+        rowCb.indeterminate = false;
+        const cbs = document.querySelectorAll(`.legend-cb[data-topic="${topic}"]`);
+        cbs.forEach(cb => {
+            cb.checked = targetState;
+            toggleSeries(cb); // 复用逻辑更新状态和图表
+        });
+    }
+
+    // 切换整列 (Metric)
+    function toggleColumn(colCb) {
+        const metric = colCb.getAttribute('data-metric');
+        const targetState = colCb.checked;
+        // 用户主动点击列头视为明确操作，清除半选
+        colCb.indeterminate = false;
+        const cbs = document.querySelectorAll(`.legend-cb[data-metric="${metric}"]`);
+        cbs.forEach(cb => {
+            cb.checked = targetState;
+            toggleSeries(cb);
+        });
+    }
+
+    function updateRowHeaderState(topic) {
+        const rowCb = document.querySelector(`.row-select[data-topic="${topic}"]`);
+        if(!rowCb) return;
+        const cbs = document.querySelectorAll(`.legend-cb[data-topic="${topic}"]`);
+        if(cbs.length === 0) return;
+
+        let checkedCount = 0;
+        cbs.forEach(cb => { if(cb.checked) checkedCount++; });
+
+        if (checkedCount === 0) {
+            rowCb.checked = false;
+            rowCb.indeterminate = false;
+        } else if (checkedCount === cbs.length) {
+            rowCb.checked = true;
+            rowCb.indeterminate = false;
+        } else {
+            rowCb.checked = false;
+            rowCb.indeterminate = true;
+        }
+    }
+
+    function updateColHeaderState(metric) {
+        const colCb = document.querySelector(`.col-select[data-metric="${metric}"]`);
+        if(!colCb) return;
+        const cbs = document.querySelectorAll(`.legend-cb[data-metric="${metric}"]`);
+        if(cbs.length === 0) return;
+
+        let checkedCount = 0;
+        cbs.forEach(cb => { if(cb.checked) checkedCount++; });
+
+        if (checkedCount === 0) {
+            colCb.checked = false;
+            colCb.indeterminate = false;
+        } else if (checkedCount === cbs.length) {
+            colCb.checked = true;
+            colCb.indeterminate = false;
+        } else {
+            colCb.checked = false;
+            colCb.indeterminate = true;
         }
     }
 
     window.addEventListener('resize', () => {
         mainChart.resize();
         pieCharts.forEach(c => c.resize());
-    });
-
-    // 页面加载完成后初始化所有主题的半选状态
-    window.addEventListener('load', function() {
-        document.querySelectorAll('.topic-item').forEach(item => {
-            updateTopicCheckbox(item);
-        });
     });
 </script>
 </body>
