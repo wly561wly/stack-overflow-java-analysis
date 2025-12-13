@@ -353,6 +353,8 @@
             // fixedMetric 模式返回 fixedMetricSeries
             // 优先使用 normalizedSeries 以展示趋势，如果没有则尝试其他
             let sourceData = data.normalizedSeries || data.fixedMetricSeries || data.series || data.originalSeries || {};
+            // 获取原始数据用于tooltip显示
+            const originalData = data.originalSeries || {};
 
             for (let key in sourceData) {
                 availableSeriesNames.push(key);
@@ -374,10 +376,42 @@
                 legendSelected[name] = legendState[name];
             });
 
+            // 自定义tooltip formatter，显示原始数值
+            const tooltipFormatter = (params) => {
+                if (!params || params.length === 0) return '';
+
+                let tooltipContent = `<strong>${params[0].axisValueLabel}</strong><br/>`;
+
+                params.forEach(param => {
+                    // 尝试找到对应的原始数据系列名称
+                    let originalSeriesName = param.seriesName;
+
+                    // 如果是归一化数据，尝试找到对应的原始数据系列
+                    if (originalSeriesName.endsWith('_normalized')) {
+                        originalSeriesName = originalSeriesName.replace('_normalized', '');
+                    }
+
+                    // 获取原始数值
+                    let originalValue = '-';
+                    if (originalData[originalSeriesName] &&
+                        Array.isArray(originalData[originalSeriesName]) &&
+                        param.dataIndex < originalData[originalSeriesName].length) {
+                        originalValue = originalData[originalSeriesName][param.dataIndex];
+                    }
+
+                    tooltipContent += `${param.marker} ${param.seriesName}: ${originalValue}<br/>`;
+                });
+
+                return tooltipContent;
+            };
+
             // 初始 Option
             mainChart.setOption({
-                tooltip: { trigger: 'axis' },
-                legend: { 
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: tooltipFormatter
+                },
+                legend: {
                     show: false, // 隐藏默认图例，使用自定义表格
                     data: availableSeriesNames,
                     selected: legendSelected
