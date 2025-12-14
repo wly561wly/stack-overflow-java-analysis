@@ -26,6 +26,7 @@ public class TopicCooccurrenceController {
     @Autowired
     private TopicService topicService;
 
+    // 原有接口不变
     @GetMapping
     public String page() {
         return "topic-cooccurrence";
@@ -37,7 +38,7 @@ public class TopicCooccurrenceController {
             @RequestParam(defaultValue = "2020-01-01") String startDate,
             @RequestParam(defaultValue = "2024-12-31") String endDate,
             @RequestParam(defaultValue = "10") int topN,
-            @RequestParam(defaultValue = "count") String metric // count or heat
+            @RequestParam(defaultValue = "count") String metric
     ) {
         try {
             logger.info("Get cooccurrence data: start={}, end={}, topN={}, metric={}", startDate, endDate, topN, metric);
@@ -51,9 +52,6 @@ public class TopicCooccurrenceController {
         }
     }
 
-    /**
-     * 获取所有话题列表
-     */
     @GetMapping("/topics")
     @ResponseBody
     public ResponseEntity<List<Topic>> getAllTopics() {
@@ -66,9 +64,6 @@ public class TopicCooccurrenceController {
         }
     }
 
-    /**
-     * 获取指定话题与其他话题的关联度数据
-     */
     @PostMapping("/specific-topic-data")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> getSpecificTopicData(
@@ -89,4 +84,28 @@ public class TopicCooccurrenceController {
             return ResponseEntity.status(500).body(err);
         }
     }
+
+    // 新增：获取雷达图数据接口
+    @PostMapping("/radar-data")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getRadarData(
+            @RequestParam Long mainTopicId,       // 主话题ID
+            @RequestParam Long relatedTopicId,    // 关联话题ID
+            @RequestParam(defaultValue = "2020-01-01") String startDate,
+            @RequestParam(defaultValue = "2024-12-31") String endDate
+    ) {
+        try {
+            logger.info("Get radar data: mainTopicId={}, relatedTopicId={}, start={}, end={}",
+                    mainTopicId, relatedTopicId, startDate, endDate);
+            // 调用Service获取五维指标数据
+            Map<String, Object> radarData = cooccurrenceService.getRadarData(mainTopicId, relatedTopicId, startDate, endDate);
+            return ResponseEntity.ok(radarData);
+        } catch (Exception e) {
+            logger.error("Radar data analysis failed", e);
+            Map<String, Object> err = new HashMap<>();
+            err.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(err);
+        }
+    }
+
 }

@@ -33,11 +33,13 @@ public class TopicCooccurrenceService {
         long totalScore = 0;
         long totalViews = 0;
         long qualityCount = 0; // 假设 score > 5 为优质
+        long totalAnswerCount = 0; // 新增：总回答数
 
         void add(Question q) {
             this.count++;
             this.totalScore += (q.getScore() != null ? q.getScore() : 0);
             this.totalViews += (q.getViewCount() != null ? q.getViewCount() : 0);
+            this.totalAnswerCount += (q.getAnswerCount() != null ? q.getAnswerCount() : 0); // 新增：统计回答数量
             if (q.getScore() != null && q.getScore() > 5) {
                 this.qualityCount++;
             }
@@ -312,11 +314,166 @@ public class TopicCooccurrenceService {
             double val = "heat".equals(metric) ? sortedEntries.get(i).getValue().getHeat() : sortedEntries.get(i).getValue().count;
             barY.add(val);
         }
-
+        result.put("topicName", specificTopicName);
         result.put("barX", barX);
         result.put("barY", barY);
-        result.put("topicName", specificTopicName);
 
         return result;
+    }
+    public Map<String, Object> getRadarData(Long mainTopicId, Long relatedTopicId, String startDateStr, String endDateStr) {
+        // 解析时间范围
+        LocalDate startDate = LocalDate.parse(startDateStr);
+        LocalDate endDate = LocalDate.parse(endDateStr);
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
+
+        // 1. 获取所有 Topic 和 时间范围内的问题
+        List<Topic> allTopics = topicRepository.findAll();
+        List<Question> questions = questionRepository.findAll().stream()
+                .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
+                .collect(Collectors.toList());
+
+        logger.info("Radar data analysis: questions={}, topics={}, mainTopicId={}, relatedTopicId={}",
+                questions.size(), allTopics.size(), mainTopicId, relatedTopicId);
+
+        // 2. 预处理 Topic 关键词，加速匹配
+        Map<Long, List<String>> topicKeywords = new HashMap<>();
+        for (Topic t : allTopics) {
+            List<String> kws = new ArrayList<>();
+            kws.add(t.getName()); // Tag
+            if (t.getRelatedKeywords() != null && !t.getRelatedKeywords().isBlank()) {
+                kws.addAll(Arrays.asList(t.getRelatedKeywords().split(",")));
+            }
+            topicKeywords.put(t.getId(), kws.stream().map(String::trim).collect(Collectors.toList()));
+        }
+
+        // 3. 查找话题名称
+        Map<Long, String> topicNames = allTopics.stream().collect(Collectors.toMap(Topic::getId, Topic::getName));
+        String mainTopicName = topicNames.get(mainTopicId);
+        String relatedTopicName = topicNames.get(relatedTopicId);
+
+        // 4. 统计主话题与所有相关话题的共现情况
+        Map<Long, CooccurrenceStats> mainTopicCooccurrence = new HashMap<>();
+
+        // 4.1 遍历问题，统计主话题与所有其他话题的共现指标
+        for (Question q : questions) {
+            // 识别该问题包含哪些 Topic
+            List<Long> matchedTopicIds = new ArrayList<>();
+            String title = q.getTitle().toLowerCase();
+            String tags = q.getTags() != null ? q.getTags().toLowerCase() : "";
+            String body = q.getBody() != null ? q.getBody().toLowerCase() : "";
+
+            for (Topic t : allTopics) {
+                boolean isMatch = false;
+                // 简单匹配逻辑：Tag 包含 OR 标题包含关键词
+                for (String kw : topicKeywords.get(t.getId())) {
+                    String kwLower = kw.toLowerCase();
+                    if (tags.contains(kwLower) || title.contains(kwLower)) {
+                        isMatch = true;
+                        break;
+                    }
+                }
+                if (isMatch) {
+                    matchedTopicIds.add(t.getId());
+                }
+            }
+
+            // 如果问题包含主话题，并且至少还有另一个话题
+            if (matchedTopicIds.contains(mainTopicId) && matchedTopicIds.size() > 1) {
+                // 统计与主话题共现的其他话题
+                for (Long topicId : matchedTopicIds) {
+                    if (!topicId.equals(mainTopicId)) {
+                        mainTopicCooccurrence.computeIfAbsent(topicId, k -> new CooccurrenceStats()).add(q);
+                    }
+                }
+            }
+        }
+
+        // 4.2 获取当前话题对的统计数据
+        CooccurrenceStats currentStats = mainTopicCooccurrence.get(relatedTopicId);
+        if (currentStats == null) {
+            currentStats = new CooccurrenceStats(); // 如果没有共现数据，创建一个空的统计对象
+        }
+
+        // 5. 计算每个属性维度在所有相关话题对中的最大值和最小值
+        // 问题数量的最大值和最小值
+        double maxCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.count)
+                .max().orElse(1.0);
+        double minCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.count)
+                .min().orElse(0.0);
+
+        // 总评分的最大值和最小值
+        double maxScore = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalScore)
+                .max().orElse(1.0);
+        double minScore = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalScore)
+                .min().orElse(0.0);
+
+        // 总浏览量的最大值和最小值
+        double maxViews = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalViews)
+                .max().orElse(1.0);
+        double minViews = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalViews)
+                .min().orElse(0.0);
+
+        // 高质量问题数的最大值和最小值
+        double maxQualityCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.qualityCount)
+                .max().orElse(1.0);
+        double minQualityCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.qualityCount)
+                .min().orElse(0.0);
+
+        // 总回答数的最大值和最小值
+        double maxAnswerCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalAnswerCount)
+                .max().orElse(1.0);
+        double minAnswerCount = mainTopicCooccurrence.values().stream()
+                .mapToDouble(stats -> stats.totalAnswerCount)
+                .min().orElse(0.0);
+
+        // 6. 归一化当前话题对的各个属性值
+        List<Double> rawValues = Arrays.asList(
+                (double) currentStats.count,
+                (double) currentStats.totalScore,
+                (double) currentStats.totalViews,
+                (double) currentStats.qualityCount,
+                (double) currentStats.totalAnswerCount
+        );
+
+        // 应用最小-最大归一化，每个属性根据自己的最大值和最小值进行归一化
+        List<Double> normalizedValues = new ArrayList<>();
+        normalizedValues.add(normalizeValue((double) currentStats.count, minCount, maxCount));
+        normalizedValues.add(normalizeValue((double) currentStats.totalScore, minScore, maxScore));
+        normalizedValues.add(normalizeValue((double) currentStats.totalViews, minViews, maxViews));
+        normalizedValues.add(normalizeValue((double) currentStats.qualityCount, minQualityCount, maxQualityCount));
+        normalizedValues.add(normalizeValue((double) currentStats.totalAnswerCount, minAnswerCount, maxAnswerCount));
+
+        // 7. 构建雷达图数据
+        Map<String, Object> result = new HashMap<>();
+        List<String> indicator = Arrays.asList("问题数量", "总评分", "总浏览量", "高质量问题数", "总回答数");
+
+        result.put("indicator", indicator);
+        result.put("values", normalizedValues); // 使用归一化后的值绘制雷达图
+        result.put("rawValues", rawValues); // 保留原始数据用于显示
+        result.put("mainTopic", mainTopicName);
+        result.put("relatedTopic", relatedTopicName);
+        result.put("timeRange", startDateStr + " 至 " + endDateStr);
+
+        return result;
+    }
+
+    // 辅助方法：对单个值进行最小-最大归一化
+    private double normalizeValue(double value, double min, double max) {
+        // 防止除以零
+        if (max == min) {
+            return 0.5; // 如果所有值都相同，返回中间值
+        }
+        // 应用最小-最大归一化：(x - min) / (max - min)
+        return (value - min) / (max - min);
     }
 }
