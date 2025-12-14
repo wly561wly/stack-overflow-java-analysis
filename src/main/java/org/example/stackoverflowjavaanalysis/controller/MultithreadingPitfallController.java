@@ -34,11 +34,12 @@ public class MultithreadingPitfallController {
             @RequestParam(required = false) List<String> selectedPitfalls
     ) {
         try {
-            logger.info("获取陷阱数据: start={}, end={}, selected={}", startDate, endDate, selectedPitfalls);
+            int selectedCount = (selectedPitfalls == null) ? 0 : selectedPitfalls.size();
+            logger.info("Get pitfall data: start={}, end={}, selectedCount={}, selected={}", startDate, endDate, selectedCount, selectedPitfalls);
             Map<String, Object> data = pitfallService.getPitfallData(startDate, endDate, selectedPitfalls);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
-            logger.error("陷阱分析失败", e);
+            logger.error("Pitfall analysis failed", e);
             Map<String, Object> err = new HashMap<>();
             err.put("error", e.getMessage());
             return ResponseEntity.status(500).body(err);

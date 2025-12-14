@@ -66,7 +66,7 @@ public class TopicCooccurrenceService {
                 .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
                 .collect(Collectors.toList());
 
-        logger.info("分析共现: 问题数={}, Topic数={}", questions.size(), allTopics.size());
+        logger.info("Cooccurrence analysis: start={}, end={}, topN={}, metric={}, questions={}, topics={}", startDateStr, endDateStr, topN, metric, questions.size(), allTopics.size());
 
         // 2. 预处理 Topic 关键词，加速匹配
         Map<Long, List<String>> topicKeywords = new HashMap<>();
@@ -143,7 +143,7 @@ public class TopicCooccurrenceService {
                 .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
                 .collect(Collectors.toList());
 
-        logger.info("分析指定话题共现: 问题数={}, Topic数={}, 指定话题ID={}", questions.size(), allTopics.size(), specificTopicId);
+        logger.info("Specific topic cooccurrence analysis: questions={}, topics={}, specificTopicId={}", questions.size(), allTopics.size(), specificTopicId);
 
         // 如果没有指定话题，则返回空数据
         if (specificTopicId == null) {
@@ -171,7 +171,7 @@ public class TopicCooccurrenceService {
                 .findFirst();
 
         if (!specificTopicOpt.isPresent()) {
-            throw new IllegalArgumentException("未找到指定话题 ID: " + specificTopicId);
+            throw new IllegalArgumentException("Specified topic ID not found: " + specificTopicId);
         }
 
         Topic specificTopic = specificTopicOpt.get();

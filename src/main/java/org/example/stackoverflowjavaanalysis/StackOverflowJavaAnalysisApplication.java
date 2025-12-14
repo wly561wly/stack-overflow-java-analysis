@@ -16,9 +16,9 @@ public class StackOverflowJavaAnalysisApplication {
     @Bean
     CommandLineRunner initTopics(TopicService topicService) {
         return args -> {
-            // 仅初始化 Topic 基础数据，不会触发网络抓取
+            // initialize default Topic data only (no network fetch)
             topicService.initDefaultTopics();
-            System.out.println("应用已启动，使用现有数据库数据。请访问 http://localhost:8080");
+            System.out.println("Application started. Using existing database data. Visit http://localhost:8080");
         };
     }
 }

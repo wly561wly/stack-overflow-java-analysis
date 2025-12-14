@@ -20,16 +20,16 @@ public class TopicService {
         // 格式: {name, description, keywords}
         // 这里是你优化后的列表，确保子内容不重复
         String[][] defaultTopics = {
-            {"java", "Java 语言核心与语法", "jdk,language,syntax,generics,annotations"},
-            {"concurrency", "并发与多线程", "thread,concurrency,deadlock,race-condition,volatile,synchronized,atomic,locks,executor,threadpool"},
-            {"spring", "Spring 生态（含 Boot）", "spring,spring-boot,dependency-injection,aop,autoconfigure,beans,context"},
-            {"jvm", "JVM、类加载与性能", "jvm,classloader,garbage-collector,hotspot,performance,jvm-tuning"},
-            {"persistence", "数据持久化（JPA / SQL）", "jpa,hibernate,sql,entity,repository,transaction"},
-            {"collections", "集合与数据结构", "list,map,set,arraylist,hashmap,deque"},
-            {"streams", "Stream 与函数式编程", "stream,lambda,collectors,optional,functional"},
-            {"io", "I/O 与网络", "io,nio,file,buffered,network,socket"},
-            {"testing", "测试与质量保障", "junit,mockito,integration-test,unit-test,coverage"},
-            {"security", "安全与认证授权", "security,oauth,jwt,authentication,authorization,encryption"}
+            {"java", "Java core and language features", "jdk,language,syntax,generics,annotations"},
+            {"concurrency", "Concurrency and multithreading", "thread,concurrency,deadlock,race-condition,volatile,synchronized,atomic,locks,executor,threadpool"},
+            {"spring", "Spring ecosystem (including Spring Boot)", "spring,spring-boot,dependency-injection,aop,autoconfigure,beans,context"},
+            {"jvm", "JVM internals and performance", "jvm,classloader,garbage-collector,hotspot,performance,jvm-tuning"},
+            {"persistence", "Data persistence (JPA / SQL)", "jpa,hibernate,sql,entity,repository,transaction"},
+            {"collections", "Collections and data structures", "list,map,set,arraylist,hashmap,deque"},
+            {"streams", "Streams and functional programming", "stream,lambda,collectors,optional,functional"},
+            {"io", "I/O and networking", "io,nio,file,buffered,network,socket"},
+            {"testing", "Testing and quality assurance", "junit,mockito,integration-test,unit-test,coverage"},
+            {"security", "Security and authentication/authorization", "security,oauth,jwt,authentication,authorization,encryption"}
         };
 
         // 1. 收集当前代码中定义的所有 Topic 名称
