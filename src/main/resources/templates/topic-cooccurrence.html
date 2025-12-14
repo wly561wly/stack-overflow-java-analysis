@@ -140,6 +140,8 @@
     let selectedTopicId = null;
     let lastValidTopicId = null;
     let isTopNListenerSetup = false;
+    let allTopics = [];
+    let topicIdNameMap = new Map();
 
     // 修复：正确的页面加载初始化
     window.onload = function() {
@@ -164,7 +166,7 @@
         setupTopNListener();
     };
 
-    // 修复：正确的模式切换函数
+    // 修复：正确的模式切换函数（核心修改：切换模式时调整图表显示逻辑）
     function switchMode(mode) {
         currentMode = mode;
 
@@ -176,9 +178,21 @@
         document.getElementById('generalControls').style.display = mode === 'general' ? 'flex' : 'none';
         document.getElementById('specificControls').style.display = mode === 'specific' ? 'flex' : 'none';
 
-        // 清空图表
-        if (heatmapChart) heatmapChart.clear();
-        if (barChart) barChart.clear();
+        // 清空所有图表
+        heatmapChart.clear();
+        barChart.clear();
+
+        // 根据模式调整图表显示
+        if (mode === 'general') {
+            // 总体模式：恢复原有布局
+            document.getElementById('barChart').style.display = 'block';
+            document.getElementById('heatmapChart').style.display = 'block';
+            loadGeneralData();
+        } else if (mode === 'specific') {
+            // 特定模式：左侧显示柱状图，右侧显示雷达图
+            document.getElementById('barChart').style.display = 'block';
+            document.getElementById('heatmapChart').style.display = 'block';
+        }
 
         // 重置特定话题输入
         if (mode === 'specific') {
@@ -192,9 +206,6 @@
             setTimeout(() => {
                 setupTopNListener();
             }, 100);
-        } else {
-            // 切换到总体模式时重新加载数据
-            loadGeneralData();
         }
     }
 
@@ -238,19 +249,6 @@
         const input = document.getElementById('specificTopicInput');
         const suggestions = document.getElementById('topicSuggestions');
         const validation = document.getElementById('topicValidation');
-
-        let allTopics = [];
-
-        // 获取话题列表
-        fetch('/cooccurrence/topics')
-            .then(res => res.json())
-            .then(topics => {
-                allTopics = topics;
-                console.log('获取到话题列表:', topics.length, '个话题');
-            })
-            .catch(err => {
-                console.error('获取话题列表失败:', err);
-            });
 
         // 输入事件处理
         input.addEventListener('input', function () {
@@ -346,29 +344,20 @@
         validation.style.color = '#666';
 
         // 获取所有话题并验证
-        fetch('/cooccurrence/topics')
-            .then(res => res.json())
-            .then(topics => {
-                const matchedTopic = topics.find(topic =>
-                    topic.name.toLowerCase() === topicName.toLowerCase()
-                );
+        const matchedTopic = allTopics.find(topic =>
+            topic.name.toLowerCase() === topicName.toLowerCase()
+        );
 
-                if (matchedTopic) {
-                    validation.textContent = `话题验证通过: ${matchedTopic.name}`;
-                    validation.style.color = '#28a745';
-                    console.log('手动输入验证通过，加载话题数据...');
-                    loadSpecificTopicDataWithId(matchedTopic.id);
-                } else {
-                    validation.textContent = `话题 "${topicName}" 不是有效话题，请从建议列表中选择或输入有效话题名称`;
-                    validation.style.color = '#ff6b6b';
-                    console.log('话题验证失败:', topicName);
-                }
-            })
-            .catch(err => {
-                console.error('验证话题失败:', err);
-                validation.textContent = '验证话题失败，请重试';
-                validation.style.color = '#ff6b6b';
-            });
+        if (matchedTopic) {
+            validation.textContent = `话题验证通过: ${matchedTopic.name}`;
+            validation.style.color = '#28a745';
+            console.log('手动输入验证通过，加载话题数据...');
+            loadSpecificTopicDataWithId(matchedTopic.id);
+        } else {
+            validation.textContent = `话题 "${topicName}" 不是有效话题，请从建议列表中选择或输入有效话题名称`;
+            validation.style.color = '#ff6b6b';
+            console.log('话题验证失败:', topicName);
+        }
     }
 
     // 使用话题ID加载特定话题数据
@@ -382,8 +371,9 @@
         const topNValue = topNSelect.value;
         console.log('加载特定话题数据 - topicId:', topicId, 'topN:', topNValue);
 
+        // 显示loading
+        heatmapChart.showLoading();
         barChart.showLoading();
-        heatmapChart.clear(); // 特定话题分析不需要热力图
 
         // 记录当前有效的topicId
         lastValidTopicId = topicId;
@@ -405,13 +395,80 @@
         fetch('/cooccurrence/specific-topic-data', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
+                heatmapChart.hideLoading();
                 barChart.hideLoading();
+
                 if (data.error) {
                     console.error('后端返回错误:', data.error);
                     alert(data.error);
                 } else {
                     console.log('成功获取数据，渲染图表...');
-                    renderSpecificBarChart(data);
+
+                    // 渲染左侧柱状图
+                    renderSpecificBarChart(data, true);
+
+                    // 如果有数据，显示关联度最高的话题的雷达图
+                    if (data.barX && data.barX.length > 0) {
+                        // 获取第一个话题名称对应的ID
+                        const topRelatedTopicName = data.barX[0];
+                        const topRelatedTopicId = [...topicIdNameMap.entries()]
+                            .find(([id, name]) => name === topRelatedTopicName)?.[0];
+
+                        if (topRelatedTopicId) {
+                            // 加载雷达图数据
+                            loadRadarData(topicId, topRelatedTopicId);
+                        }
+                    }
+                }
+            })
+            .catch(err => {
+                console.error('请求失败:', err);
+                heatmapChart.hideLoading();
+                barChart.hideLoading();
+                alert("请求失败");
+            });
+    }
+
+    // 加载话题数据
+    function loadTopics() {
+        fetch('/cooccurrence/topics')
+            .then(res => res.json())
+            .then(topics => {
+                // 话题列表用于自动补全
+                allTopics = topics;
+                console.log('获取到话题列表:', topics.length, '个话题');
+
+                // 构建ID-名称映射
+                topicIdNameMap.clear();
+                topics.forEach(topic => {
+                    topicIdNameMap.set(topic.id, topic.name);
+                });
+            })
+            .catch(err => {
+                console.error('获取话题列表失败:', err);
+            });
+    }
+
+    // 加载雷达图数据
+    function loadRadarData(mainTopicId, relatedTopicId) {
+        const formData = new FormData();
+        formData.append('mainTopicId', mainTopicId);
+        formData.append('relatedTopicId', relatedTopicId);
+        formData.append('startDate', document.getElementById('specificStartDate').value);
+        formData.append('endDate', document.getElementById('specificEndDate').value);
+
+        barChart.showLoading();
+
+        fetch('/cooccurrence/radar-data', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                barChart.hideLoading();
+
+                if (data.error) {
+                    console.error('后端返回错误:', data.error);
+                    alert(data.error);
+                } else {
+                    renderRadarChart(data);
                 }
             })
             .catch(err => {
@@ -421,18 +478,7 @@
             });
     }
 
-    function loadTopics() {
-        fetch('/cooccurrence/topics')
-            .then(res => res.json())
-            .then(topics => {
-                // 话题列表用于自动补全
-                console.log('获取到话题列表:', topics.length, '个话题');
-            })
-            .catch(err => {
-                console.error('获取话题列表失败:', err);
-            });
-    }
-
+    // 加载总体数据
     function loadGeneralData() {
         heatmapChart.showLoading();
         barChart.showLoading();
@@ -463,6 +509,7 @@
             });
     }
 
+    // 渲染热力图
     function renderHeatmap(data) {
         console.log('渲染热力图，数据:', data);
 
@@ -502,6 +549,7 @@
         }
     }
 
+    // 渲染总体柱状图
     function renderGeneralBarChart(data) {
         console.log('渲染总体柱状图，数据:', data);
 
@@ -538,22 +586,30 @@
         }
     }
 
-    // 增强的特定话题柱状图渲染函数
-    function renderSpecificBarChart(data) {
-        console.log('渲染特定话题柱状图，数据:', data);
+    // 增强的特定话题柱状图渲染函数（核心修改：支持渲染到左侧容器）
+    function renderSpecificBarChart(data, renderToLeft = false) {
+        console.log('渲染特定话题柱状图，数据:', data, '是否渲染到左侧:', renderToLeft);
 
         if (!data.barX || !data.barY) {
             console.error('特定话题柱状图数据格式错误，缺少barX或barY:', data);
-            barChart.setOption({
+            // 渲染错误提示到目标容器
+            const errorOption = {
                 title: { text: '数据格式错误', left: 'center' },
                 xAxis: { type: 'value' },
                 yAxis: { type: 'category', data: ['错误'] },
                 series: [{ type: 'bar', data: [0] }]
-            });
+            };
+            if (renderToLeft) {
+                heatmapChart.setOption(errorOption);
+            } else {
+                barChart.setOption(errorOption);
+            }
             return;
         }
 
         const title = data.topicName ? `与 "${data.topicName}" 关联度最高的话题 (Top N)` : '话题关联度分析 (Top N)';
+
+        // 构建柱状图配置
         const option = {
             title: { text: title, left: 'center' },
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
@@ -569,10 +625,71 @@
         };
 
         try {
-            barChart.setOption(option);
-            console.log('特定话题柱状图渲染成功');
+            // 根据参数决定渲染到左侧（heatmapChart）还是右侧（barChart）
+            if (renderToLeft) {
+                heatmapChart.setOption(option);
+
+                // 添加点击事件监听
+                heatmapChart.off('click');
+                heatmapChart.on('click', function(params) {
+                    if (params.componentType === 'series' && params.seriesType === 'bar') {
+                        // 获取点击的话题名称
+                        const clickedTopicName = params.name;
+                        console.log('点击了话题:', clickedTopicName);
+
+                        // 获取点击的话题名称对应的ID
+                        const clickedTopicId = [...topicIdNameMap.entries()]
+                            .find(([id, name]) => name === clickedTopicName)?.[0];
+
+                        if (clickedTopicId && lastValidTopicId) {
+                            // 加载雷达图数据
+                            loadRadarData(lastValidTopicId, clickedTopicId);
+                        }
+                    }
+                });
+            } else {
+                barChart.setOption(option);
+            }
+            console.log('特定话题柱状图渲染成功（目标：', renderToLeft ? '左侧' : '右侧', '）');
         } catch (error) {
             console.error('特定话题柱状图渲染失败:', error);
+        }
+    }
+
+    // 渲染雷达图
+    function renderRadarChart(data) {
+        if (!data.indicator || !data.values) {
+            console.error('雷达图数据格式错误:', data);
+            return;
+        }
+
+        const option = {
+            title: {
+                text: `${data.mainTopic} 与 ${data.relatedTopic} 的共现五维分析`,
+                left: 'center'
+            },
+            tooltip: {},
+            radar: {
+                indicator: data.indicator.map((name, index) => ({
+                    name: name,
+                    max: Math.max(...data.values) * 1.2 // 设置最大值为数据的1.2倍，使图表更美观
+                }))
+            },
+            series: [{
+                name: '共现指标',
+                type: 'radar',
+                data: [{
+                    value: data.values,
+                    name: '共现指标'
+                }]
+            }]
+        };
+
+        try {
+            barChart.setOption(option);
+            console.log('雷达图渲染成功');
+        } catch (error) {
+            console.error('雷达图渲染失败:', error);
         }
     }
 
