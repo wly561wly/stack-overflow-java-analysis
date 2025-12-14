@@ -9,7 +9,7 @@
         .container { max-width: 1400px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 20px; }
         .controls { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-end; background: #f8f9fa; padding: 15px; border-radius: 6px; }
-        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        .control-group { display: flex; flex-direction: column; gap: 5px; position: relative; }
         .control-group label { font-weight: bold; font-size: 0.9em; color: #555; }
         button { background: #007bff; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; }
         button:hover { background: #0056b3; }
@@ -19,6 +19,28 @@
         .mode-toggle { display: flex; gap: 10px; margin-bottom: 15px; }
         .mode-btn { padding: 8px 15px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; }
         .mode-btn.active { background: #007bff; color: white; }
+
+        /* 自动补全样式 */
+        .suggestion-item:hover {
+            background-color: #f0f0f0 !important;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none !important;
+        }
+
+        #topicSuggestions {
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-radius: 0 0 4px 4px;
+            top: 100%;
+            left: 0;
+        }
+
+        #specificTopicInput:focus {
+            outline: none;
+            border-color: #007bff !important;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
     </style>
 </head>
 <body>
@@ -36,8 +58,8 @@
     </div>
 
     <div class="mode-toggle">
-        <button class="mode-btn active" onclick="switchMode('general')">总体共现分析</button>
-        <button class="mode-btn" onclick="switchMode('specific')">特定话题关联分析</button>
+        <button class="mode-btn active" data-mode="general" onclick="switchMode('general')">总体共现分析</button>
+        <button class="mode-btn" data-mode="specific" onclick="switchMode('specific')">特定话题关联分析</button>
     </div>
 
     <div class="controls" id="generalControls">
@@ -79,10 +101,11 @@
         </div>
 
         <div class="control-group">
-            <label>选择话题</label>
-            <select id="specificTopic">
-                <option value="">请选择话题</option>
-            </select>
+            <label>输入话题名称</label>
+            <input type="text" id="specificTopicInput" placeholder="请输入话题名称，如：java、spring、concurrency等"
+                   style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+            <div id="topicSuggestions" style="display: none; position: absolute; background: white; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; z-index: 1000; width: 100%;"></div>
+            <div id="topicValidation" style="margin-top: 5px; font-size: 12px; color: #666;"></div>
         </div>
 
         <div class="control-group">
@@ -102,7 +125,7 @@
             </select>
         </div>
 
-        <button onclick="loadSpecificTopicData()">分析关联</button>
+        <button onclick="validateAndLoadSpecificTopicData()">分析关联</button>
     </div>
 
     <div class="chart-row">
@@ -112,44 +135,298 @@
 </div>
 
 <script>
-    let heatmapChart = echarts.init(document.getElementById('heatmapChart'));
-    let barChart = echarts.init(document.getElementById('barChart'));
-    let currentMode = 'general'; // 'general' or 'specific'
+    let heatmapChart, barChart;
+    let currentMode = 'general';
+    let selectedTopicId = null;
+    let lastValidTopicId = null;
+    let isTopNListenerSetup = false;
 
-    // 页面加载时获取话题列表
+    // 修复：正确的页面加载初始化
     window.onload = function() {
+        console.log('页面加载完成，初始化组件...');
+
+        // 检查图表容器
+        const heatmapContainer = document.getElementById('heatmapChart');
+        const barContainer = document.getElementById('barChart');
+
+        if (!heatmapContainer || !barContainer) {
+            console.error('图表容器未找到！');
+            return;
+        }
+
+        // 初始化ECharts实例
+        heatmapChart = echarts.init(heatmapContainer);
+        barChart = echarts.init(barContainer);
+
         loadTopics();
         loadGeneralData();
+        setupTopicInput();
+        setupTopNListener();
     };
 
+    // 修复：正确的模式切换函数
     function switchMode(mode) {
         currentMode = mode;
 
-        // 更新按钮状态
+        // 修复：使用data-mode属性选择器
         document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-        event.target.classList.add('active');
+        document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
 
         // 显示/隐藏控件
         document.getElementById('generalControls').style.display = mode === 'general' ? 'flex' : 'none';
         document.getElementById('specificControls').style.display = mode === 'specific' ? 'flex' : 'none';
 
         // 清空图表
-        heatmapChart.clear();
-        barChart.clear();
+        if (heatmapChart) heatmapChart.clear();
+        if (barChart) barChart.clear();
+
+        // 重置特定话题输入
+        if (mode === 'specific') {
+            document.getElementById('specificTopicInput').value = '';
+            document.getElementById('topicValidation').textContent = '';
+            selectedTopicId = null;
+            lastValidTopicId = null;
+            console.log('切换到特定话题分析模式，重置状态');
+
+            // 延迟设置Top N监听器
+            setTimeout(() => {
+                setupTopNListener();
+            }, 100);
+        } else {
+            // 切换到总体模式时重新加载数据
+            loadGeneralData();
+        }
+    }
+
+    // 设置Top N选择框的变化监听
+    function setupTopNListener() {
+        const topNSelect = document.getElementById('specificTopN');
+        if (!topNSelect) {
+            console.error('找不到 specificTopN 元素，将在100ms后重试');
+            setTimeout(setupTopNListener, 100);
+            return;
+        }
+
+        // 避免重复绑定监听器
+        if (isTopNListenerSetup) {
+            console.log('Top N监听器已设置，跳过重复绑定');
+            return;
+        }
+
+        console.log('设置Top N监听器...');
+        topNSelect.addEventListener('change', handleTopNChange);
+        isTopNListenerSetup = true;
+        console.log('Top N监听器设置成功');
+    }
+
+    // Top N变化处理函数
+    function handleTopNChange() {
+        const newTopN = this.value;
+        console.log('Top N值变化:', newTopN, 'lastValidTopicId:', lastValidTopicId);
+
+        // 只有当已经选择了有效话题时才重新加载数据
+        if (lastValidTopicId) {
+            console.log('检测到有效话题ID，重新加载数据...');
+            loadSpecificTopicDataWithId(lastValidTopicId);
+        } else {
+            console.log('没有有效话题ID，不重新加载数据');
+        }
+    }
+
+    // 设置话题输入框的自动补全功能
+    function setupTopicInput() {
+        const input = document.getElementById('specificTopicInput');
+        const suggestions = document.getElementById('topicSuggestions');
+        const validation = document.getElementById('topicValidation');
+
+        let allTopics = [];
+
+        // 获取话题列表
+        fetch('/cooccurrence/topics')
+            .then(res => res.json())
+            .then(topics => {
+                allTopics = topics;
+                console.log('获取到话题列表:', topics.length, '个话题');
+            })
+            .catch(err => {
+                console.error('获取话题列表失败:', err);
+            });
+
+        // 输入事件处理
+        input.addEventListener('input', function () {
+            const value = this.value.trim();
+            selectedTopicId = null;
+            validation.textContent = '';
+            validation.style.color = '#666';
+
+            if (value.length === 0) {
+                suggestions.style.display = 'none';
+                return;
+            }
+
+            // 过滤匹配的话题
+            const matchedTopics = allTopics.filter(topic =>
+                topic.name.toLowerCase().includes(value.toLowerCase())
+            );
+
+            if (matchedTopics.length > 0) {
+                suggestions.innerHTML = matchedTopics.map(topic =>
+                    `<div class="suggestion-item" data-id="${topic.id}" data-name="${topic.name}"
+                         style="padding: 8px; cursor: pointer; border-bottom: 1px solid #eee;"
+                         onmouseover="this.style.background='#f0f0f0'"
+                         onmouseout="this.style.background='white'">
+                         ${topic.name}
+                     </div>`
+                ).join('');
+                suggestions.style.display = 'block';
+
+                // 确保建议框在输入框下方正确显示
+                const inputRect = input.getBoundingClientRect();
+                suggestions.style.top = '100%';
+                suggestions.style.left = '0';
+            } else {
+                suggestions.style.display = 'none';
+                validation.textContent = '未找到匹配的话题，请输入有效的话题名称';
+                validation.style.color = '#ff6b6b';
+            }
+        });
+
+        // 点击建议项
+        suggestions.addEventListener('click', function (e) {
+            if (e.target.classList.contains('suggestion-item')) {
+                const topicId = e.target.getAttribute('data-id');
+                const topicName = e.target.getAttribute('data-name');
+                input.value = topicName;
+                selectedTopicId = topicId;
+                lastValidTopicId = topicId; // 修复：设置有效话题ID
+                suggestions.style.display = 'none';
+                validation.textContent = `已选择话题: ${topicName}`;
+                validation.style.color = '#28a745';
+                console.log('通过自动补全选择话题:', topicName, 'ID:', topicId, '设置 lastValidTopicId:', lastValidTopicId);
+            }
+        });
+
+        // 点击其他地方隐藏建议框
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !suggestions.contains(e.target)) {
+                suggestions.style.display = 'none';
+            }
+        });
+
+        // 回车键确认
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                validateAndLoadSpecificTopicData();
+            }
+        });
+    }
+
+    // 验证话题并加载数据
+    function validateAndLoadSpecificTopicData() {
+        const input = document.getElementById('specificTopicInput');
+        const topicName = input.value.trim();
+        const validation = document.getElementById('topicValidation');
+
+        if (!topicName) {
+            validation.textContent = '请输入话题名称';
+            validation.style.color = '#ff6b6b';
+            return;
+        }
+
+        // 检查是否通过自动补全选择了有效话题
+        if (selectedTopicId) {
+            // 直接使用已选择的话题ID
+            console.log('通过自动补全验证，加载话题数据...');
+            loadSpecificTopicDataWithId(selectedTopicId);
+            return;
+        }
+
+        // 如果没有通过自动补全选择，需要验证话题名称
+        validation.textContent = '正在验证话题...';
+        validation.style.color = '#666';
+
+        // 获取所有话题并验证
+        fetch('/cooccurrence/topics')
+            .then(res => res.json())
+            .then(topics => {
+                const matchedTopic = topics.find(topic =>
+                    topic.name.toLowerCase() === topicName.toLowerCase()
+                );
+
+                if (matchedTopic) {
+                    validation.textContent = `话题验证通过: ${matchedTopic.name}`;
+                    validation.style.color = '#28a745';
+                    console.log('手动输入验证通过，加载话题数据...');
+                    loadSpecificTopicDataWithId(matchedTopic.id);
+                } else {
+                    validation.textContent = `话题 "${topicName}" 不是有效话题，请从建议列表中选择或输入有效话题名称`;
+                    validation.style.color = '#ff6b6b';
+                    console.log('话题验证失败:', topicName);
+                }
+            })
+            .catch(err => {
+                console.error('验证话题失败:', err);
+                validation.textContent = '验证话题失败，请重试';
+                validation.style.color = '#ff6b6b';
+            });
+    }
+
+    // 使用话题ID加载特定话题数据
+    function loadSpecificTopicDataWithId(topicId) {
+        const topNSelect = document.getElementById('specificTopN');
+        if (!topNSelect) {
+            console.error('找不到 specificTopN 元素');
+            return;
+        }
+
+        const topNValue = topNSelect.value;
+        console.log('加载特定话题数据 - topicId:', topicId, 'topN:', topNValue);
+
+        barChart.showLoading();
+        heatmapChart.clear(); // 特定话题分析不需要热力图
+
+        // 记录当前有效的topicId
+        lastValidTopicId = topicId;
+        console.log('设置 lastValidTopicId:', lastValidTopicId);
+
+        const formData = new FormData();
+        formData.append('startDate', document.getElementById('specificStartDate').value);
+        formData.append('endDate', document.getElementById('specificEndDate').value);
+        formData.append('metric', document.getElementById('specificMetric').value);
+        formData.append('topN', topNValue);
+        formData.append('topicId', topicId);
+
+        // 调试：显示实际发送的参数
+        console.log('发送的参数:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ': ' + value);
+        }
+
+        fetch('/cooccurrence/specific-topic-data', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                barChart.hideLoading();
+                if (data.error) {
+                    console.error('后端返回错误:', data.error);
+                    alert(data.error);
+                } else {
+                    console.log('成功获取数据，渲染图表...');
+                    renderSpecificBarChart(data);
+                }
+            })
+            .catch(err => {
+                console.error('请求失败:', err);
+                barChart.hideLoading();
+                alert("请求失败");
+            });
     }
 
     function loadTopics() {
         fetch('/cooccurrence/topics')
             .then(res => res.json())
             .then(topics => {
-                const select = document.getElementById('specificTopic');
-                select.innerHTML = '<option value="">请选择话题</option>';
-                topics.forEach(topic => {
-                    const option = document.createElement('option');
-                    option.value = topic.id;
-                    option.textContent = topic.name;
-                    select.appendChild(option);
-                });
+                // 话题列表用于自动补全
+                console.log('获取到话题列表:', topics.length, '个话题');
             })
             .catch(err => {
                 console.error('获取话题列表失败:', err);
@@ -186,41 +463,14 @@
             });
     }
 
-    function loadSpecificTopicData() {
-        const topicId = document.getElementById('specificTopic').value;
-        if (!topicId) {
-            alert('请选择一个话题');
+    function renderHeatmap(data) {
+        console.log('渲染热力图，数据:', data);
+
+        if (!data.heatmapAxis || !data.heatmapData) {
+            console.error('热力图数据格式错误:', data);
             return;
         }
 
-        barChart.showLoading();
-        heatmapChart.clear(); // 特定话题分析不需要热力图
-
-        const formData = new FormData();
-        formData.append('startDate', document.getElementById('specificStartDate').value);
-        formData.append('endDate', document.getElementById('specificEndDate').value);
-        formData.append('metric', document.getElementById('specificMetric').value);
-        formData.append('topN', document.getElementById('specificTopN').value);
-        formData.append('topicId', topicId);
-
-        fetch('/cooccurrence/specific-topic-data', { method: 'POST', body: formData })
-            .then(res => res.json())
-            .then(data => {
-                barChart.hideLoading();
-                if (data.error) {
-                    alert(data.error);
-                } else {
-                    renderSpecificBarChart(data);
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                barChart.hideLoading();
-                alert("请求失败");
-            });
-    }
-
-    function renderHeatmap(data) {
         const option = {
             title: { text: '主题关联热力图 (Top Active Topics)', left: 'center' },
             tooltip: { position: 'top' },
@@ -243,16 +493,35 @@
                 emphasis: { itemStyle: { shadowBlur: 10, shadowColor: 'rgba(0, 0, 0, 0.5)' } }
             }]
         };
-        heatmapChart.setOption(option);
+
+        try {
+            heatmapChart.setOption(option);
+            console.log('热力图渲染成功');
+        } catch (error) {
+            console.error('热力图渲染失败:', error);
+        }
     }
 
     function renderGeneralBarChart(data) {
+        console.log('渲染总体柱状图，数据:', data);
+
+        if (!data.barX || !data.barY) {
+            console.error('总体柱状图数据格式错误:', data);
+            barChart.setOption({
+                title: { text: '数据格式错误', left: 'center' },
+                xAxis: { type: 'value' },
+                yAxis: { type: 'category', data: ['错误'] },
+                series: [{ type: 'bar', data: [0] }]
+            });
+            return;
+        }
+
         const option = {
             title: { text: '高频共现主题对 (Top N)', left: 'center' },
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
             grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
             xAxis: { type: 'value' },
-            yAxis: { type: 'category', data: data.barX, inverse: true }, // inverse 让第一名在上面
+            yAxis: { type: 'category', data: data.barX, inverse: true },
             series: [{
                 name: '数值',
                 type: 'bar',
@@ -260,17 +529,37 @@
                 itemStyle: { color: '#5470c6' }
             }]
         };
-        barChart.setOption(option);
+
+        try {
+            barChart.setOption(option);
+            console.log('总体柱状图渲染成功');
+        } catch (error) {
+            console.error('总体柱状图渲染失败:', error);
+        }
     }
 
+    // 增强的特定话题柱状图渲染函数
     function renderSpecificBarChart(data) {
+        console.log('渲染特定话题柱状图，数据:', data);
+
+        if (!data.barX || !data.barY) {
+            console.error('特定话题柱状图数据格式错误，缺少barX或barY:', data);
+            barChart.setOption({
+                title: { text: '数据格式错误', left: 'center' },
+                xAxis: { type: 'value' },
+                yAxis: { type: 'category', data: ['错误'] },
+                series: [{ type: 'bar', data: [0] }]
+            });
+            return;
+        }
+
         const title = data.topicName ? `与 "${data.topicName}" 关联度最高的话题 (Top N)` : '话题关联度分析 (Top N)';
         const option = {
             title: { text: title, left: 'center' },
             tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
             grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
             xAxis: { type: 'value' },
-            yAxis: { type: 'category', data: data.barX, inverse: true }, // inverse 让第一名在上面
+            yAxis: { type: 'category', data: data.barX, inverse: true },
             series: [{
                 name: '数值',
                 type: 'bar',
@@ -278,12 +567,18 @@
                 itemStyle: { color: '#5470c6' }
             }]
         };
-        barChart.setOption(option);
+
+        try {
+            barChart.setOption(option);
+            console.log('特定话题柱状图渲染成功');
+        } catch (error) {
+            console.error('特定话题柱状图渲染失败:', error);
+        }
     }
 
     window.addEventListener('resize', () => {
-        heatmapChart.resize();
-        barChart.resize();
+        if (heatmapChart) heatmapChart.resize();
+        if (barChart) barChart.resize();
     });
 </script>
 </body>

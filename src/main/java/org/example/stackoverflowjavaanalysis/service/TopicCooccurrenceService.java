@@ -312,10 +312,9 @@ public class TopicCooccurrenceService {
             double val = "heat".equals(metric) ? sortedEntries.get(i).getValue().getHeat() : sortedEntries.get(i).getValue().count;
             barY.add(val);
         }
-
+        result.put("topicName", specificTopicName);
         result.put("barX", barX);
         result.put("barY", barY);
-        result.put("topicName", specificTopicName);
 
         return result;
     }

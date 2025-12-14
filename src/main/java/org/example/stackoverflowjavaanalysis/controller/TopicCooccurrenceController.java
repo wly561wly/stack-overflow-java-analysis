@@ -79,7 +79,7 @@ public class TopicCooccurrenceController {
             @RequestParam(required = false) Long topicId
     ) {
         try {
-            logger.info("获取指定话题关联数据: start={}, end={}, metric={}, topicId={}", startDate, endDate, metric, topicId);
+            logger.info("获取指定话题关联数据: start={}, end={}, topN={}, metric={}, topicId={}", startDate, endDate, topN, metric, topicId);
             Map<String, Object> data = cooccurrenceService.getSpecificTopicCooccurrenceData(startDate, endDate, topN, metric, topicId);
             return ResponseEntity.ok(data);
         } catch (Exception e) {
