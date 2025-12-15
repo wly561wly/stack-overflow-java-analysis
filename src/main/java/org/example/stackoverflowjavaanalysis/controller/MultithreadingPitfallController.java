@@ -31,12 +31,39 @@ public class MultithreadingPitfallController {
     public ResponseEntity<Map<String, Object>> getData(
             @RequestParam(defaultValue = "2020-01-01") String startDate,
             @RequestParam(defaultValue = "2024-12-31") String endDate,
-            @RequestParam(required = false) List<String> selectedPitfalls
+            @RequestParam(required = false) List<String> selectedPitfalls,
+            @RequestParam(required = false, defaultValue = "") String customWords,
+            @RequestParam(required = false, defaultValue = "count") String lineChartAttribute
     ) {
         try {
             int selectedCount = (selectedPitfalls == null) ? 0 : selectedPitfalls.size();
-            logger.info("Get pitfall data: start={}, end={}, selectedCount={}, selected={}", startDate, endDate, selectedCount, selectedPitfalls);
-            Map<String, Object> data = pitfallService.getPitfallData(startDate, endDate, selectedPitfalls);
+            logger.info("Get pitfall data: start={}, end={}, selectedCount={}, selected={}, customWords={}, lineChartAttribute={}",
+                    startDate, endDate, selectedCount, selectedPitfalls, customWords, lineChartAttribute);
+
+            List<String> customWordsList = new ArrayList<>();
+            List<String> errorMessages = new ArrayList<>();
+
+            if (customWords != null && !customWords.isEmpty()) {
+                String[] words = customWords.split("\\r?\\n");
+                Set<String> validPitfallTypes = pitfallService.getAllPitfallTypes();
+                for (String word : words) {
+                    if (word.trim().isEmpty()) continue;
+                    if (word.contains(":") && validPitfallTypes.contains(word.split(":")[0])) {
+                        customWordsList.add(word);
+                    } else if (!word.contains(":")) {
+                        errorMessages.add("格式错误: " + word + " (应为 '陷阱类型:关键词')");
+                    } else {
+                        errorMessages.add("未知陷阱类型: " + word);
+                    }
+                }
+            }
+
+            Map<String, Object> data = pitfallService.getPitfallData(startDate, endDate, selectedPitfalls, customWordsList, lineChartAttribute);
+            // 添加验证错误信息
+            if (!errorMessages.isEmpty()) {
+                data.put("validationErrors", errorMessages);
+            }
+
             return ResponseEntity.ok(data);
         } catch (Exception e) {
             logger.error("Pitfall analysis failed", e);

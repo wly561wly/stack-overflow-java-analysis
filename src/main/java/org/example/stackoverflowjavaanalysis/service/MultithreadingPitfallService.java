@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.example.stackoverflowjavaanalysis.util.NumberUtils; // 导入工具类
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -21,6 +22,9 @@ public class MultithreadingPitfallService {
 
     @Autowired
     private QuestionRepository questionRepository;
+
+    @Autowired
+    private NLPService nlpService;
 
     // 陷阱类型定义与关键词绑定
     private static final Map<String, List<String>> PITFALL_DEFINITIONS = new LinkedHashMap<>();
@@ -41,19 +45,33 @@ public class MultithreadingPitfallService {
         long totalAnswers = 0;
         long solvedCount = 0; // 有接受答案的问题数
         long qualityAnswerCount = 0; // 优质回答数 (假设 score > 5)
+        long withExceptionCount = 0; // 包含异常信息的问题数
+        long withCodeCount = 0; // 包含代码片段的问题数
+        Map<String, Long> exceptionTypeCount = new HashMap<>(); // 异常类型统计
 
-        void add(Question q) {
+        void add(Question q, boolean containsException, boolean containsCode, List<String> exceptions) {
             this.count++;
             this.totalScore += (q.getScore() != null ? q.getScore() : 0);
             this.totalAnswers += (q.getAnswerCount() != null ? q.getAnswerCount() : 0);
-            // 假设 Question 实体没有 isAnswered 字段，这里用 answerCount > 0 模拟，或者你需要扩展实体
-            // 如果实体有 acceptedAnswerId，可以用 acceptedAnswerId != null
-            if (q.getAnswerCount() != null && q.getAnswerCount() > 0) {
+
+            if (q.getHasAcceptedAnswer() != null && q.getHasAcceptedAnswer()) {
                 this.solvedCount++;
             }
-            // 简单模拟优质回答判定
+
             if (q.getScore() != null && q.getScore() > 5) {
                 this.qualityAnswerCount++;
+            }
+
+            if (containsException) {
+                this.withExceptionCount++;
+            }
+
+            if (containsCode) {
+                this.withCodeCount++;
+            }
+
+            for (String exception : exceptions) {
+                this.exceptionTypeCount.put(exception, this.exceptionTypeCount.getOrDefault(exception, 0L) + 1);
             }
         }
 
@@ -64,36 +82,53 @@ public class MultithreadingPitfallService {
         double getSolveRate() {
             return count == 0 ? 0 : (double) solvedCount / count;
         }
+
+        double getExceptionRate() {
+            return count == 0 ? 0 : (double) withExceptionCount / count;
+        }
+
+        double getCodeRate() {
+            return count == 0 ? 0 : (double) withCodeCount / count;
+        }
     }
 
     public Map<String, Object> getPitfallData(String startDateStr,
                                               String endDateStr,
                                               List<String> selectedPitfalls) {
-        
+        return getPitfallData(startDateStr, endDateStr, selectedPitfalls, null, "count");
+    }
+
+    public Map<String, Object> getPitfallData(String startDateStr,
+                                              String endDateStr,
+                                              List<String> selectedPitfalls,
+                                              List<String> customWords) {
+        return getPitfallData(startDateStr, endDateStr, selectedPitfalls, customWords, "count");
+    }
+
+    public Map<String, Object> getPitfallData(String startDateStr,
+                                              String endDateStr,
+                                              List<String> selectedPitfalls,
+                                              List<String> customWords,
+                                              String lineChartAttribute) {
+
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate = LocalDate.parse(endDateStr);
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        // 1. 获取 "multithreading" 相关的所有问题
-        // 这里假设 Tag 包含 "multithreading" 或 "thread" 或 "concurrency"
-        // 为了简化，我们复用之前的模糊查询，或者你可以定义更精确的查询
         List<Question> questions = new ArrayList<>();
         questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("multithreading", startDateTime, endDateTime));
         questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("concurrency", startDateTime, endDateTime));
         questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("thread", startDateTime, endDateTime));
-        
-        // 去重
+
         questions = questions.stream().distinct().collect(Collectors.toList());
 
-        logger.info("Multithreading pitfall analysis: base questions={}", questions.size());
+        logger.info("Multithreading pitfall analysis: base questions={}, customWord={}", questions.size(),customWords
+        );
 
-        // 2. 识别陷阱并统计
-        // Map<PitfallType, Stats>
         Map<String, PitfallStats> totalStats = new HashMap<>();
-        // Map<PitfallType, Map<DateStr, Stats>>
         Map<String, Map<String, PitfallStats>> timeSeriesStats = new HashMap<>();
-        
+
         DateTimeFormatter monthFmt = DateTimeFormatter.ofPattern("yyyy-MM");
         SortedSet<String> dates = new TreeSet<>();
 
@@ -107,27 +142,78 @@ public class MultithreadingPitfallService {
 
         for (Question q : questions) {
             String title = q.getTitle().toLowerCase();
-            String body = q.getBody() != null ? q.getBody().toLowerCase() : "";
+            String bodyHtml = q.getBody() != null ? q.getBody() : "";
+            String bodyText = nlpService.extractTextFromHtml(bodyHtml).toLowerCase();
+            String fullText = title + " " + bodyText;
             String dateKey = q.getCreationDate().format(monthFmt);
             dates.add(dateKey);
 
+            List<String> exceptions = nlpService.extractExceptions(bodyHtml);
+            List<String> codeSnippets = nlpService.extractCodeSnippets(bodyHtml);
+
+            // 使用NLP服务识别陷阱，但不传入自定义关键词
+            Set<String> identifiedPitfalls = nlpService.identifyMultithreadingPitfalls(fullText, null);
+
+            // 结合代码片段分析
+            for (String code : codeSnippets) {
+                Map<String, Boolean> codeIssues = nlpService.analyzeCodeForMultithreadingIssues(code);
+                if (codeIssues.getOrDefault("containsSynchronization", false) ||
+                        codeIssues.getOrDefault("containsVolatile", false)) {
+                    identifiedPitfalls.add("Thread Safety");
+                }
+                if (codeIssues.getOrDefault("containsThreadPools", false)) {
+                    identifiedPitfalls.add("Thread Pool");
+                }
+            }
+
+            // 应用自定义匹配词（只在这里处理一次）
+            if (customWords != null && !customWords.isEmpty()) {
+                for (String customEntry : customWords) {
+                    try {
+                        String[] parts = customEntry.split(":");
+                        if (parts.length < 2) {
+                            logger.warn("Invalid custom word format: {}", customEntry);
+                            continue;
+                        }
+
+                        String customPitfall = parts[0].trim();
+                        String words = parts[1].trim();
+                        String[] word = words.split(",");
+
+                        if (!PITFALL_DEFINITIONS.containsKey(customPitfall)) {
+                            logger.warn("Unknown pitfall type: {}", customPitfall);
+                            continue;
+                        }
+                        for (String w : word) {
+                            w = w.trim();
+                            if (fullText.contains(w)) {
+                                identifiedPitfalls.add(customPitfall);
+                                break;
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.error("Error processing custom word: {}", customEntry, e);
+                    }
+                }
+            }
+
+            // 传统的关键词匹配作为补充（保留原有逻辑）
             for (Map.Entry<String, List<String>> entry : PITFALL_DEFINITIONS.entrySet()) {
                 String pitfallType = entry.getKey();
-                // 如果用户没选这个类型，跳过
                 if (!totalStats.containsKey(pitfallType)) continue;
 
+                if (identifiedPitfalls.contains(pitfallType)) continue;
+
                 boolean isMatch = false;
-                // 优先匹配标题
                 for (String kw : entry.getValue()) {
                     if (title.contains(kw)) {
                         isMatch = true;
                         break;
                     }
                 }
-                // 标题未匹配，匹配全文
                 if (!isMatch) {
                     for (String kw : entry.getValue()) {
-                        if (body.contains(kw)) {
+                        if (bodyText.contains(kw)) {
                             isMatch = true;
                             break;
                         }
@@ -135,21 +221,32 @@ public class MultithreadingPitfallService {
                 }
 
                 if (isMatch) {
-                    totalStats.get(pitfallType).add(q);
-                    timeSeriesStats.get(pitfallType).computeIfAbsent(dateKey, k -> new PitfallStats()).add(q);
+                    identifiedPitfalls.add(pitfallType);
+                }
+            }
+
+            // 统计匹配的陷阱
+            for (String pitfallType : identifiedPitfalls) {
+                if (totalStats.containsKey(pitfallType)) {
+                    boolean containsException = !exceptions.isEmpty();
+                    boolean containsCode = !codeSnippets.isEmpty();
+
+                    totalStats.get(pitfallType).add(q, containsException, containsCode, exceptions);
+                    timeSeriesStats.get(pitfallType).computeIfAbsent(dateKey, k -> new PitfallStats())
+                            .add(q, containsException, containsCode, exceptions);
                 }
             }
         }
 
-        return buildChartData(totalStats, timeSeriesStats, dates);
+        return buildChartData(totalStats, timeSeriesStats, dates, lineChartAttribute);
     }
 
     private Map<String, Object> buildChartData(Map<String, PitfallStats> totalStats,
                                                Map<String, Map<String, PitfallStats>> timeSeriesStats,
-                                               SortedSet<String> dates) {
+                                               SortedSet<String> dates,
+                                               String lineChartAttribute) {
         Map<String, Object> result = new HashMap<>();
 
-        // 1. 饼图数据 (问题数量占比)
         List<Map<String, Object>> pieData = new ArrayList<>();
         for (Map.Entry<String, PitfallStats> entry : totalStats.entrySet()) {
             Map<String, Object> item = new HashMap<>();
@@ -159,49 +256,103 @@ public class MultithreadingPitfallService {
         }
         result.put("pieData", pieData);
 
-        // 2. 柱状图数据 (多指标对比)
         List<String> barX = new ArrayList<>(totalStats.keySet());
         List<Long> barCount = new ArrayList<>();
         List<Double> barHeat = new ArrayList<>();
         List<Double> barSolveRate = new ArrayList<>();
+        List<Double> barExceptionRate = new ArrayList<>();
+        List<Double> barCodeRate = new ArrayList<>();
 
         for (String type : barX) {
             PitfallStats s = totalStats.get(type);
             barCount.add(s.count);
-            barHeat.add(s.getHeat());
-            barSolveRate.add(s.getSolveRate() * 100); // 百分比
+            barHeat.add(NumberUtils.roundToTwoDecimalPlaces(s.getHeat()));
+            barSolveRate.add(NumberUtils.roundToTwoDecimalPlaces(s.getSolveRate() * 100));
+            barExceptionRate.add(NumberUtils.roundToTwoDecimalPlaces(s.getExceptionRate() * 100));
+            barCodeRate.add(NumberUtils.roundToTwoDecimalPlaces(s.getCodeRate() * 100));
         }
         result.put("barX", barX);
         result.put("barCount", barCount);
         result.put("barHeat", barHeat);
         result.put("barSolveRate", barSolveRate);
+        result.put("barExceptionRate", barExceptionRate);
+        result.put("barCodeRate", barCodeRate);
 
-        // 3. 折线图数据 (趋势)
         Map<String, List<Number>> lineSeries = new HashMap<>();
-        // 这里我们只生成 Count 和 Heat 的趋势，避免数据量过大
+
+        // 根据用户选择的属性生成折线图数据
         for (String type : totalStats.keySet()) {
-            List<Number> counts = new ArrayList<>();
-            List<Number> heats = new ArrayList<>();
-            
+            List<Number> values = new ArrayList<>();
+
             for (String d : dates) {
                 PitfallStats s = timeSeriesStats.get(type).getOrDefault(d, new PitfallStats());
-                counts.add(s.count);
-                heats.add(s.getHeat());
+
+                switch (lineChartAttribute) {
+                    case "count":
+                        values.add(s.count);
+                        break;
+                    case "heat":
+                        values.add(NumberUtils.roundToTwoDecimalPlaces(s.getHeat()));
+                        break;
+                    case "solveRate":
+                        values.add(NumberUtils.roundToTwoDecimalPlaces(s.getSolveRate() * 100));
+                        break;
+                    case "exceptionRate":
+                        values.add(NumberUtils.roundToTwoDecimalPlaces(s.getExceptionRate() * 100));
+                        break;
+                    case "codeRate":
+                        values.add(NumberUtils.roundToTwoDecimalPlaces(s.getCodeRate() * 100));
+                        break;
+                    default:
+                        values.add(s.count); // 默认显示问题数量
+                }
             }
-            lineSeries.put(type + "_count", counts);
-            lineSeries.put(type + "_heat", heats);
+
+            lineSeries.put(type, values);
         }
-        
+
         result.put("dates", dates);
         result.put("lineSeries", lineSeries);
-        
-        // 返回所有定义的陷阱类型供前端筛选
+        result.put("lineChartAttribute", lineChartAttribute); // 返回当前选择的属性，用于前端显示
+
         result.put("allPitfalls", PITFALL_DEFINITIONS.keySet());
 
         return result;
     }
-    
+
     public Set<String> getAllPitfallTypes() {
         return PITFALL_DEFINITIONS.keySet();
+    }
+
+    // 获取可用的折线图属性选项
+    public List<Map<String, String>> getLineChartAttributes() {
+        List<Map<String, String>> attributes = new ArrayList<>();
+
+        Map<String, String> countAttr = new HashMap<>();
+        countAttr.put("value", "count");
+        countAttr.put("label", "问题数量");
+        attributes.add(countAttr);
+
+        Map<String, String> heatAttr = new HashMap<>();
+        heatAttr.put("value", "heat");
+        heatAttr.put("label", "热度");
+        attributes.add(heatAttr);
+
+        Map<String, String> solveRateAttr = new HashMap<>();
+        solveRateAttr.put("value", "solveRate");
+        solveRateAttr.put("label", "解决率 (%)");
+        attributes.add(solveRateAttr);
+
+        Map<String, String> exceptionRateAttr = new HashMap<>();
+        exceptionRateAttr.put("value", "exceptionRate");
+        exceptionRateAttr.put("label", "异常率 (%)");
+        attributes.add(exceptionRateAttr);
+
+        Map<String, String> codeRateAttr = new HashMap<>();
+        codeRateAttr.put("value", "codeRate");
+        codeRateAttr.put("label", "代码率 (%)");
+        attributes.add(codeRateAttr);
+
+        return attributes;
     }
 }
