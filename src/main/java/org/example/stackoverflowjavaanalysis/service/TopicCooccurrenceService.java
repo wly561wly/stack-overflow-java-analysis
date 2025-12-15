@@ -8,6 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.example.stackoverflowjavaanalysis.util.NumberUtils; // 导入工具类
+
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -246,7 +248,7 @@ public class TopicCooccurrenceService {
             barX.add(name1 + " & " + name2);
 
             double val = "heat".equals(metric) ? sortedPairs.get(i).getValue().getHeat() : sortedPairs.get(i).getValue().count;
-            barY.add(val);
+            barY.add(NumberUtils.roundToTwoDecimalPlaces(val)); // 使用NumberUtils处理
         }
         result.put("barX", barX);
         result.put("barY", barY);
@@ -275,7 +277,7 @@ public class TopicCooccurrenceService {
                 if (stats != null) {
                     double val = "heat".equals(metric) ? stats.getHeat() : stats.count;
                     // ECharts Heatmap format: [xIndex, yIndex, value]
-                    heatmapData.add(Arrays.asList(i, j, val));
+                    heatmapData.add(Arrays.asList(i, j, NumberUtils.roundToTwoDecimalPlaces(val))); // 使用NumberUtils处理
                 }
             }
         }
@@ -312,7 +314,7 @@ public class TopicCooccurrenceService {
             barX.add(topicName);
 
             double val = "heat".equals(metric) ? sortedEntries.get(i).getValue().getHeat() : sortedEntries.get(i).getValue().count;
-            barY.add(val);
+            barY.add(NumberUtils.roundToTwoDecimalPlaces(val)); // 使用NumberUtils处理
         }
         result.put("topicName", specificTopicName);
         result.put("barX", barX);
@@ -447,12 +449,11 @@ public class TopicCooccurrenceService {
 
         // 应用最小-最大归一化，每个属性根据自己的最大值和最小值进行归一化
         List<Double> normalizedValues = new ArrayList<>();
-        normalizedValues.add(normalizeValue((double) currentStats.count, minCount, maxCount));
-        normalizedValues.add(normalizeValue((double) currentStats.totalScore, minScore, maxScore));
-        normalizedValues.add(normalizeValue((double) currentStats.totalViews, minViews, maxViews));
-        normalizedValues.add(normalizeValue((double) currentStats.qualityCount, minQualityCount, maxQualityCount));
-        normalizedValues.add(normalizeValue((double) currentStats.totalAnswerCount, minAnswerCount, maxAnswerCount));
-
+        normalizedValues.add(NumberUtils.roundToTwoDecimalPlaces(normalizeValue((double) currentStats.count, minCount, maxCount)));
+        normalizedValues.add(NumberUtils.roundToTwoDecimalPlaces(normalizeValue((double) currentStats.totalScore, minScore, maxScore)));
+        normalizedValues.add(NumberUtils.roundToTwoDecimalPlaces(normalizeValue((double) currentStats.totalViews, minViews, maxViews)));
+        normalizedValues.add(NumberUtils.roundToTwoDecimalPlaces(normalizeValue((double) currentStats.qualityCount, minQualityCount, maxQualityCount)));
+        normalizedValues.add(NumberUtils.roundToTwoDecimalPlaces(normalizeValue((double) currentStats.totalAnswerCount, minAnswerCount, maxAnswerCount)));
         // 7. 构建雷达图数据
         Map<String, Object> result = new HashMap<>();
         List<String> indicator = Arrays.asList("问题数量", "总评分", "总浏览量", "高质量问题数", "总回答数");
