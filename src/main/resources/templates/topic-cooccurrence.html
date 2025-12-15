@@ -41,6 +41,18 @@
             border-color: #007bff !important;
             box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
         }
+
+        /* 雷达图控制按钮样式 */
+        #radarControls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        #baseDataIndicator {
+            margin-right: 15px;
+            color: #5470c6;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -128,6 +140,13 @@
         <button onclick="validateAndLoadSpecificTopicData()">分析关联</button>
     </div>
 
+    <!-- 雷达图控制按钮 -->
+    <div id="radarControls">
+        <span id="baseDataIndicator" style="display: none;"></span>
+        <button onclick="setAsBaseData()">设为基底数据</button>
+        <button onclick="clearBaseData()">清除基底数据</button>
+    </div>
+
     <div class="chart-row">
         <div id="heatmapChart" class="chart-box"></div>
         <div id="barChart" class="chart-box"></div>
@@ -142,6 +161,11 @@
     let isTopNListenerSetup = false;
     let allTopics = [];
     let topicIdNameMap = new Map();
+
+    // 存储基底雷达图数据
+    let baseRadarData = null;
+    // 存储当前对比的雷达图数据
+    let currentRadarData = null;
 
     // 修复：正确的页面加载初始化
     window.onload = function() {
@@ -198,14 +222,8 @@
         if (mode === 'specific') {
             document.getElementById('specificTopicInput').value = '';
             document.getElementById('topicValidation').textContent = '';
-            selectedTopicId = null;
-            lastValidTopicId = null;
-            console.log('切换到特定话题分析模式，重置状态');
-
-            // 延迟设置Top N监听器
-            setTimeout(() => {
-                setupTopNListener();
-            }, 100);
+            // 清除基底数据
+            clearBaseData();
         }
     }
 
@@ -656,12 +674,34 @@
         }
     }
 
-    // 渲染雷达图
-    function renderRadarChart(data) {
+    // 渲染雷达图（修改版本）
+    function renderRadarChart(data, isBaseData = false) {
         if (!data.indicator || !data.values) {
             console.error('雷达图数据格式错误:', data);
             return;
         }
+
+        // 根据isBaseData参数决定是设置基底数据还是当前对比数据
+        if (isBaseData) {
+            baseRadarData = JSON.parse(JSON.stringify(data)); // 深拷贝
+            // 更新界面提示用户已设置基底数据
+            document.getElementById('baseDataIndicator').textContent = `基底数据: ${data.mainTopic} 与 ${data.relatedTopic}`;
+            document.getElementById('baseDataIndicator').style.display = 'inline';
+        } else {
+            currentRadarData = JSON.parse(JSON.stringify(data)); // 深拷贝
+        }
+
+        // 如果有基底数据，则显示对比雷达图；否则显示单个雷达图
+        if (baseRadarData && currentRadarData) {
+            renderComparisonRadarChart(baseRadarData, currentRadarData);
+        } else {
+            renderSingleRadarChart(isBaseData ? baseRadarData : currentRadarData);
+        }
+    }
+
+    // 渲染单个雷达图
+    function renderSingleRadarChart(data) {
+        if (!data) return;
 
         const option = {
             title: {
@@ -686,10 +726,87 @@
         };
 
         try {
-            barChart.setOption(option);
-            console.log('雷达图渲染成功');
+            barChart.setOption(option, true); // 使用true参数清除之前的配置
+            console.log('单个雷达图渲染成功');
         } catch (error) {
-            console.error('雷达图渲染失败:', error);
+            console.error('单个雷达图渲染失败:', error);
+        }
+    }
+
+    // 渲染对比雷达图
+    function renderComparisonRadarChart(baseData, currentData) {
+        // 合并两个数据集的指标，取最大的值作为雷达图的最大值
+        const combinedValues = [];
+        for (let i = 0; i < baseData.values.length; i++) {
+            combinedValues.push(Math.max(baseData.values[i], currentData.values[i]));
+        }
+
+        const maxValue = Math.max(...combinedValues) * 1.2;
+
+        const option = {
+            title: {
+                text: `共现五维分析对比`,
+                subtext: `基底: ${baseData.mainTopic} 与 ${baseData.relatedTopic} | 对比: ${currentData.mainTopic} 与 ${currentData.relatedTopic}`,
+                left: 'center'
+            },
+            legend: {
+                data: ['基底数据', '当前数据'],
+                bottom: 0
+            },
+            tooltip: {},
+            radar: {
+                indicator: baseData.indicator.map((name, index) => ({
+                    name: name,
+                    max: maxValue
+                }))
+            },
+            series: [{
+                name: '共现指标对比',
+                type: 'radar',
+                data: [
+                    {
+                        value: baseData.values,
+                        name: '基底数据',
+                        itemStyle: { color: '#5470c6' },
+                        lineStyle: { color: '#5470c6' },
+                        areaStyle: { color: '#5470c6', opacity: 0.3 }
+                    },
+                    {
+                        value: currentData.values,
+                        name: '当前数据',
+                        itemStyle: { color: '#ee6666' },
+                        lineStyle: { color: '#ee6666' },
+                        areaStyle: { color: '#ee6666', opacity: 0.3 }
+                    }
+                ]
+            }]
+        };
+
+        try {
+            barChart.setOption(option, true); // 使用true参数清除之前的配置
+            console.log('对比雷达图渲染成功');
+        } catch (error) {
+            console.error('对比雷达图渲染失败:', error);
+        }
+    }
+
+    // 设置当前数据为基底数据
+    function setAsBaseData() {
+        if (currentRadarData) {
+            renderRadarChart(currentRadarData, true); // 将当前数据设为基底
+        } else {
+            alert('当前没有可设置为基底的数据');
+        }
+    }
+
+    // 清除基底数据
+    function clearBaseData() {
+        baseRadarData = null;
+        document.getElementById('baseDataIndicator').style.display = 'none';
+
+        // 重新渲染当前数据（如果存在）
+        if (currentRadarData) {
+            renderRadarChart(currentRadarData);
         }
     }
 
