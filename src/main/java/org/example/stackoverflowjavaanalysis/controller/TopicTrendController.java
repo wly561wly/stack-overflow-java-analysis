@@ -50,55 +50,30 @@ public class TopicTrendController {
             @RequestParam(required = false) String scopes,
             @RequestParam(defaultValue = "line") String chartType,
             @RequestParam(defaultValue = "compare") String mode,
-            @RequestParam(required = false) String fixedMetric, // 新增固定指标参数
-            @RequestParam(defaultValue = "quarter") String granularity, // 新增：时间粒度 (year, quarter, month)，默认为 quarter
+            @RequestParam(required = false) String fixedMetric,
+            @RequestParam(defaultValue = "quarter") String granularity,
             @RequestParam(defaultValue = "2020-01-01") String startDate,
             @RequestParam(defaultValue = "2024-12-31") String endDate) {
 
-        Map<String, Object> error = new HashMap<>();
+        // 将逗号分隔的 String 转为 List<String>
+        List<String> selectedKeywordList = (selectedKeywords == null || selectedKeywords.trim().isEmpty())
+                ? Collections.emptyList()
+                : Arrays.stream(selectedKeywords.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
 
-        // 1. 校验搜索范围
-        if (scopes == null || scopes.trim().isEmpty()) {
-            error.put("error", "Please select at least one scope (tag,title,fulltext)");
-            return ResponseEntity.badRequest().body(error);
-        }
-        List<String> scopeList = Arrays.stream(scopes.split(",")).map(String::trim).collect(Collectors.toList());
+        List<String> scopesList = (scopes == null || scopes.trim().isEmpty())
+                ? Arrays.asList("tag", "title", "fulltext")
+                : Arrays.stream(scopes.split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .collect(Collectors.toList());
 
-        // 2. 校验图表与模式
-        if ("pie".equalsIgnoreCase(chartType) && "integrate".equalsIgnoreCase(mode)) {
-            error.put("error", "Pie chart does not support integrate mode. Use compare mode.");
-            return ResponseEntity.badRequest().body(error);
-        }
+        Map<String, Object> result = topicTrendService.getTrendData(
+                topicIds, selectedKeywordList, scopesList,
+                chartType, mode, fixedMetric, startDate, endDate, granularity);
 
-        // 3. 校验对比数量
-        if (("compare".equalsIgnoreCase(mode) || "fixedMetric".equalsIgnoreCase(mode)) && topicIds.size() > 3) {
-            error.put("error", "Compare/fixedMetric mode supports at most 3 topics.");
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        // 4. 校验时间粒度 (新增校验)
-        if (!Arrays.asList("year", "quarter", "month").contains(granularity.toLowerCase())) {
-            error.put("error", "Invalid granularity. Supported: year, quarter, month");
-            return ResponseEntity.badRequest().body(error);
-        }
-
-        try {
-            List<String> keywordList = (selectedKeywords == null || selectedKeywords.isBlank())
-                    ? new ArrayList<>()
-                    : Arrays.stream(selectedKeywords.split(",")).map(String::trim).collect(Collectors.toList());
-
-            logger.info("Query trend data: start={}, end={}, granularity={}, topicIds={}, keywordsCount={}, scopes={}, chartType={}, mode={}, fixedMetric={}",
-                    startDate, endDate, granularity, topicIds, keywordList.size(), scopeList, chartType, mode, fixedMetric);
-
-            // 注意：你需要同步修改 TopicTrendService.getTrendData 方法签名以接收 granularity 参数
-            Map<String, Object> result = topicTrendService.getTrendData(
-                    topicIds, keywordList, scopeList, chartType, mode, fixedMetric, startDate, endDate, granularity 
-            );
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            logger.error("Error generating trend data", e);
-            error.put("error", "Internal server error: " + e.getMessage());
-            return ResponseEntity.status(500).body(error);
-        }
+        return ResponseEntity.ok(result);
     }
 }
