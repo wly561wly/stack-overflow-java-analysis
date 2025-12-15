@@ -36,30 +36,54 @@ public class TopicTrendService {
                                             String fixedMetric,
                                             String startDateStr,
                                             String endDateStr,
-                                            String granularity) { // 新增 granularity 参数
-
+                                            String granularity) {
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate = LocalDate.parse(endDateStr);
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        List<Topic> topics = topicRepository.findAllById(topicIds);
+        Map<Long, List<String>> topicEffectiveKeywords = new LinkedHashMap<>();
 
-        // 准备每个 Topic 的有效关键词
-        Map<Long, List<String>> topicEffectiveKeywords = new HashMap<>();
+        // 假设这里有 topics 列表（按 topicIds 或全部加载）
+        List<Topic> topics = (topicIds == null || topicIds.isEmpty())
+                ? topicRepository.findAll()
+                : topicRepository.findAllById(topicIds);
+
         for (Topic t : topics) {
-            List<String> topicKws = Arrays.asList(t.getRelatedKeywords().split(","));
-            List<String> effective = new ArrayList<>();
-            for (String kw : topicKws) {
-                if (selectedKeywords.contains(kw.trim())) {
-                    effective.add(kw.trim());
+            String rawRelated = t.getRelatedKeywords();
+            List<String> related = (rawRelated == null || rawRelated.trim().isEmpty())
+                    ? Collections.emptyList()
+                    : Arrays.stream(rawRelated.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+            Set<String> effective = new LinkedHashSet<>();
+
+            if (selectedKeywords != null && !selectedKeywords.isEmpty()) {
+                // 交集优先
+                for (String kw : related) {
+                    if (selectedKeywords.contains(kw)) effective.add(kw);
                 }
-            }
-            // 如果前端没传任何 keyword (异常情况)，或者交集为空，兜底使用 topic name
-            if (effective.isEmpty() && (selectedKeywords == null || selectedKeywords.isEmpty())) {
+                // 如果交集为空，回退：使用 topic 名与 relatedKeywords
+                if (effective.isEmpty()) {
+                    effective.add(t.getName());
+                    effective.addAll(related);
+                } else {
+                    // 始终保证包含 topic 名
+                    effective.add(t.getName());
+                }
+            } else {
+                // 未传 selectedKeywords，使用 topic 名 + related
                 effective.add(t.getName());
+                effective.addAll(related);
             }
-            topicEffectiveKeywords.put(t.getId(), effective);
+
+            List<String> effectiveList = new ArrayList<>(effective);
+            topicEffectiveKeywords.put(t.getId(), effectiveList);
+
+            // 用 effectiveList 去查询并统计（示例）
+            // Set<Question> questions = queryQuestions(effectiveList, scopes, start, end);
+            // logger.debug("Topic [{}] effectiveKeywords={} => questionsFound={}", t.getName(), effectiveList, questions.size());
         }
 
         if ("integrate".equalsIgnoreCase(mode)) {
@@ -85,8 +109,10 @@ public class TopicTrendService {
                 List<String> kws = topicEffectiveKeywords.get(t.getId());
                 if (kws != null && !kws.isEmpty()) {
                     Set<Question> qs = queryQuestions(kws, scopes, startDateTime, endDateTime);
+                    logger.debug("Topic {} -> keywords={} -> questionsFound={}", t.getName(), kws, qs.size());
                     topicQuestionsMap.put(t.getName(), qs);
                 } else {
+                    logger.debug("Topic {} has no keywords after processing, returning empty set", t.getName());
                     topicQuestionsMap.put(t.getName(), new HashSet<>());
                 }
             }
@@ -229,7 +255,7 @@ public class TopicTrendService {
                 .collect(Collectors.toList());
     }
 
-    // 修改此方法：实现全局归一化逻辑
+    // 修改此方法：只返回原始数据，移除后端归一化逻辑
     private Map<String, Object> buildTimeSeriesDataWithNormalization(Map<String, Set<Question>> dataMap, String chartType, String granularity) {
         SortedSet<String> dates = new TreeSet<>();
         Map<String, Map<String, List<Question>>> groupedData = new HashMap<>();
@@ -243,14 +269,13 @@ public class TopicTrendService {
         }
 
         // 2. Build Series
-        Map<String, List<Number>> originalSeries = new LinkedHashMap<>();
-        Map<String, List<Double>> normalizedSeries = new LinkedHashMap<>();
+        Map<String, List<Number>> series = new LinkedHashMap<>();
 
         for (String key : dataMap.keySet()) {
-            originalSeries.put(key + "_count", new ArrayList<>());
-            originalSeries.put(key + "_score", new ArrayList<>());
-            originalSeries.put(key + "_views", new ArrayList<>());
-            originalSeries.put(key + "_answers", new ArrayList<>());
+            series.put(key + "_count", new ArrayList<>());
+            series.put(key + "_score", new ArrayList<>());
+            series.put(key + "_views", new ArrayList<>());
+            series.put(key + "_answers", new ArrayList<>());
         }
 
         for (String date : dates) {
@@ -262,53 +287,59 @@ public class TopicTrendService {
                 long views = list.stream().mapToLong(q -> q.getViewCount() == null ? 0 : q.getViewCount()).sum();
                 long answers = list.stream().mapToLong(q -> q.getAnswerCount() == null ? 0 : q.getAnswerCount()).sum();
 
-                originalSeries.get(key + "_count").add(count);
-                originalSeries.get(key + "_score").add(score);
-                originalSeries.get(key + "_views").add(views);
-                originalSeries.get(key + "_answers").add(answers);
+                series.get(key + "_count").add(count);
+                series.get(key + "_score").add(score);
+                series.get(key + "_views").add(views);
+                series.get(key + "_answers").add(answers);
             }
         }
 
-        // --- 核心修改：计算全局极值并进行统一归一化 ---
-        
-        // 1. 收集所有 Topic 的数据以计算全局 Min/Max
+        // --- 生成归一化结果和 seriesMap（topic -> series keys） ---
+        Map<String, List<String>> seriesMap = new LinkedHashMap<>();
+        for (String key : dataMap.keySet()) {
+            List<String> keys = new ArrayList<>();
+            keys.add(key + "_count");
+            keys.add(key + "_score");
+            keys.add(key + "_views");
+            keys.add(key + "_answers");
+            seriesMap.put(key, keys);
+        }
+
+        // 计算全局极值并归一化（后端提供的归一化，前端可以直接使用）
         List<Double> allCounts = new ArrayList<>();
         List<Double> allScores = new ArrayList<>();
         List<Double> allViews = new ArrayList<>();
         List<Double> allAnswers = new ArrayList<>();
 
         for (String key : dataMap.keySet()) {
-            allCounts.addAll(originalSeries.get(key + "_count").stream().map(Number::doubleValue).collect(Collectors.toList()));
-            allScores.addAll(originalSeries.get(key + "_score").stream().map(Number::doubleValue).collect(Collectors.toList()));
-            allViews.addAll(originalSeries.get(key + "_views").stream().map(Number::doubleValue).collect(Collectors.toList()));
-            allAnswers.addAll(originalSeries.get(key + "_answers").stream().map(Number::doubleValue).collect(Collectors.toList()));
+            allCounts.addAll(series.get(key + "_count").stream().map(Number::doubleValue).collect(Collectors.toList()));
+            allScores.addAll(series.get(key + "_score").stream().map(Number::doubleValue).collect(Collectors.toList()));
+            allViews.addAll(series.get(key + "_views").stream().map(Number::doubleValue).collect(Collectors.toList()));
+            allAnswers.addAll(series.get(key + "_answers").stream().map(Number::doubleValue).collect(Collectors.toList()));
         }
 
         double minCount = allCounts.isEmpty() ? 0 : Collections.min(allCounts);
         double maxCount = allCounts.isEmpty() ? 0 : Collections.max(allCounts);
-        
         double minScore = allScores.isEmpty() ? 0 : Collections.min(allScores);
         double maxScore = allScores.isEmpty() ? 0 : Collections.max(allScores);
-        
         double minViews = allViews.isEmpty() ? 0 : Collections.min(allViews);
         double maxViews = allViews.isEmpty() ? 0 : Collections.max(allViews);
-        
         double minAnswers = allAnswers.isEmpty() ? 0 : Collections.min(allAnswers);
         double maxAnswers = allAnswers.isEmpty() ? 0 : Collections.max(allAnswers);
 
-        // 2. 使用全局极值对每个 Topic 的序列进行归一化
+        Map<String, List<Double>> normalizedSeries = new LinkedHashMap<>();
         for (String key : dataMap.keySet()) {
-            normalizedSeries.put(key + "_count_normalized", normalizeWithBounds(originalSeries.get(key + "_count"), minCount, maxCount));
-            normalizedSeries.put(key + "_score_normalized", normalizeWithBounds(originalSeries.get(key + "_score"), minScore, maxScore));
-            normalizedSeries.put(key + "_views_normalized", normalizeWithBounds(originalSeries.get(key + "_views"), minViews, maxViews));
-            normalizedSeries.put(key + "_answers_normalized", normalizeWithBounds(originalSeries.get(key + "_answers"), minAnswers, maxAnswers));
+            normalizedSeries.put(key + "_count_normalized", normalizeWithBounds(series.get(key + "_count"), minCount, maxCount));
+            normalizedSeries.put(key + "_score_normalized", normalizeWithBounds(series.get(key + "_score"), minScore, maxScore));
+            normalizedSeries.put(key + "_views_normalized", normalizeWithBounds(series.get(key + "_views"), minViews, maxViews));
+            normalizedSeries.put(key + "_answers_normalized", normalizeWithBounds(series.get(key + "_answers"), minAnswers, maxAnswers));
         }
-        // --- 修改结束 ---
 
         Map<String, Object> result = new HashMap<>();
         result.put("dates", dates);
-        result.put("originalSeries", originalSeries);  // 原始数据
-        result.put("normalizedSeries", normalizedSeries);  // 归一化数据
+        result.put("series", series);  // 原始整数数据
+        result.put("normalizedSeries", normalizedSeries); // 后端归一化，0..1
+        result.put("seriesMap", seriesMap); // 明确的 topic -> series keys 映射，便于前端映射
         return result;
     }
 
@@ -375,4 +406,6 @@ public class TopicTrendService {
         result.put("pies", pies);
         return result;
     }
+
+    
 }

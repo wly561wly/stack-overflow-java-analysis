@@ -134,6 +134,15 @@
                 </div>
 
                 <div class="control-group">
+                    <label>时间粒度</label>
+                    <select id="granularity">
+                        <option value="month">月</option>
+                        <option value="quarter">季度</option>
+                        <option value="year">年</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
                     <label>时间范围</label>
                     <div style="display: flex; gap: 5px;">
                         <input type="date" id="startDate" value="2020-01-01">
@@ -271,6 +280,7 @@
         const mode = document.getElementById('mode').value;
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
+        const granularity = document.getElementById('granularity').value;
 
         if (topicIds.length === 0) return alert("请至少选择一个主题");
         if (scopes.length === 0) return alert("请至少选择一个搜索范围");
@@ -287,6 +297,7 @@
         formData.append('mode', mode);
         formData.append('startDate', startDate);
         formData.append('endDate', endDate);
+        formData.append('granularity', granularity);
 
         fetch('/trend/data', { method: 'POST', body: formData })
             .then(res => res.json())
@@ -349,19 +360,69 @@
             const availableSeriesNames = [];
 
             // 兼容后端不同的返回字段
-            // compare/integrate 模式返回 normalizedSeries (归一化) 和 originalSeries
+            // compare/integrate 模式返回 series (原始数据)
             // fixedMetric 模式返回 fixedMetricSeries
-            // 优先使用 normalizedSeries 以展示趋势，如果没有则尝试其他
-            let sourceData = data.normalizedSeries || data.fixedMetricSeries || data.series || data.originalSeries || {};
-            // 获取原始数据用于tooltip显示
-            const originalData = data.originalSeries || {};
+            let sourceData = data.series || data.fixedMetricSeries || data.originalSeries || {};
+            
+            // 如果是 compare 模式，进行前端归一化
+            if (mode === 'compare') {
+                // 1. 计算全局极值
+                let allCounts = [], allScores = [], allViews = [], allAnswers = [];
+                
+                for (let key in sourceData) {
+                    if (key.endsWith('_count')) allCounts.push(...sourceData[key]);
+                    if (key.endsWith('_score')) allScores.push(...sourceData[key]);
+                    if (key.endsWith('_views')) allViews.push(...sourceData[key]);
+                    if (key.endsWith('_answers')) allAnswers.push(...sourceData[key]);
+                }
 
-            for (let key in sourceData) {
+                const getMinMax = (arr) => {
+                    if (!arr.length) return { min: 0, max: 1 };
+                    return { min: Math.min(...arr), max: Math.max(...arr) };
+                };
+
+                const bounds = {
+                    count: getMinMax(allCounts),
+                    score: getMinMax(allScores),
+                    views: getMinMax(allViews),
+                    answers: getMinMax(allAnswers)
+                };
+
+                // 2. 生成归一化数据
+                let normalizedData = {};
+                for (let key in sourceData) {
+                    let type = '';
+                    if (key.endsWith('_count')) type = 'count';
+                    else if (key.endsWith('_score')) type = 'score';
+                    else if (key.endsWith('_views')) type = 'views';
+                    else if (key.endsWith('_answers')) type = 'answers';
+
+                    if (type) {
+                        const { min, max } = bounds[type];
+                        const range = max - min || 1; // 防止除以0
+                        normalizedData[key] = sourceData[key].map(v => (v - min) / range);
+                    } else {
+                        normalizedData[key] = sourceData[key];
+                    }
+                }
+                // 使用归一化数据绘图，但保留 sourceData 用于 tooltip
+                // 注意：这里我们把 sourceData 存到 originalData 变量里供 tooltip 使用
+                // 而把 normalizedData 赋值给 sourceData 供绘图循环使用
+                // 但为了逻辑清晰，我们新建一个 plotData
+                var plotData = normalizedData;
+            } else {
+                var plotData = sourceData;
+            }
+
+            // 获取原始数据用于tooltip显示
+            const originalData = sourceData;
+
+            for (let key in plotData) {
                 availableSeriesNames.push(key);
                 series.push({
                     name: key,
                     type: type,
-                    data: sourceData[key],
+                    data: plotData[key],
                     smooth: true
                 });
             }
@@ -385,11 +446,6 @@
                 params.forEach(param => {
                     // 尝试找到对应的原始数据系列名称
                     let originalSeriesName = param.seriesName;
-
-                    // 如果是归一化数据，尝试找到对应的原始数据系列
-                    if (originalSeriesName.endsWith('_normalized')) {
-                        originalSeriesName = originalSeriesName.replace('_normalized', '');
-                    }
 
                     // 获取原始数值
                     let originalValue = '-';
