@@ -51,27 +51,34 @@ public class TopicTrendController {
             @RequestParam(defaultValue = "line") String chartType,
             @RequestParam(defaultValue = "compare") String mode,
             @RequestParam(required = false) String fixedMetric, // 新增固定指标参数
+            @RequestParam(defaultValue = "quarter") String granularity, // 新增：时间粒度 (year, quarter, month)，默认为 quarter
             @RequestParam(defaultValue = "2020-01-01") String startDate,
             @RequestParam(defaultValue = "2024-12-31") String endDate) {
 
         Map<String, Object> error = new HashMap<>();
 
         // 1. 校验搜索范围
-            if (scopes == null || scopes.trim().isEmpty()) {
-                error.put("error", "Please select at least one scope (tag,title,fulltext)");
+        if (scopes == null || scopes.trim().isEmpty()) {
+            error.put("error", "Please select at least one scope (tag,title,fulltext)");
             return ResponseEntity.badRequest().body(error);
         }
         List<String> scopeList = Arrays.stream(scopes.split(",")).map(String::trim).collect(Collectors.toList());
 
         // 2. 校验图表与模式
-            if ("pie".equalsIgnoreCase(chartType) && "integrate".equalsIgnoreCase(mode)) {
-                error.put("error", "Pie chart does not support integrate mode. Use compare mode.");
+        if ("pie".equalsIgnoreCase(chartType) && "integrate".equalsIgnoreCase(mode)) {
+            error.put("error", "Pie chart does not support integrate mode. Use compare mode.");
             return ResponseEntity.badRequest().body(error);
         }
 
         // 3. 校验对比数量
-            if (("compare".equalsIgnoreCase(mode) || "fixedMetric".equalsIgnoreCase(mode)) && topicIds.size() > 3) {
-                error.put("error", "Compare/fixedMetric mode supports at most 3 topics.");
+        if (("compare".equalsIgnoreCase(mode) || "fixedMetric".equalsIgnoreCase(mode)) && topicIds.size() > 3) {
+            error.put("error", "Compare/fixedMetric mode supports at most 3 topics.");
+            return ResponseEntity.badRequest().body(error);
+        }
+
+        // 4. 校验时间粒度 (新增校验)
+        if (!Arrays.asList("year", "quarter", "month").contains(granularity.toLowerCase())) {
+            error.put("error", "Invalid granularity. Supported: year, quarter, month");
             return ResponseEntity.badRequest().body(error);
         }
 
@@ -80,16 +87,17 @@ public class TopicTrendController {
                     ? new ArrayList<>()
                     : Arrays.stream(selectedKeywords.split(",")).map(String::trim).collect(Collectors.toList());
 
-                logger.info("Query trend data: start={}, end={}, topicIds={}, keywordsCount={}, scopes={}, chartType={}, mode={}, fixedMetric={}",
-                    startDate, endDate, topicIds, keywordList.size(), scopeList, chartType, mode, fixedMetric);
+            logger.info("Query trend data: start={}, end={}, granularity={}, topicIds={}, keywordsCount={}, scopes={}, chartType={}, mode={}, fixedMetric={}",
+                    startDate, endDate, granularity, topicIds, keywordList.size(), scopeList, chartType, mode, fixedMetric);
 
+            // 注意：你需要同步修改 TopicTrendService.getTrendData 方法签名以接收 granularity 参数
             Map<String, Object> result = topicTrendService.getTrendData(
-                    topicIds, keywordList, scopeList, chartType, mode, fixedMetric, startDate, endDate // 传递fixedMetric参数
+                    topicIds, keywordList, scopeList, chartType, mode, fixedMetric, startDate, endDate, granularity 
             );
             return ResponseEntity.ok(result);
         } catch (Exception e) {
-                logger.error("Error generating trend data", e);
-                error.put("error", "Internal server error: " + e.getMessage());
+            logger.error("Error generating trend data", e);
+            error.put("error", "Internal server error: " + e.getMessage());
             return ResponseEntity.status(500).body(error);
         }
     }

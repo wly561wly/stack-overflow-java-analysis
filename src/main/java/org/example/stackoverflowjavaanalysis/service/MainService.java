@@ -1,9 +1,12 @@
 package org.example.stackoverflowjavaanalysis.service;
 
+import org.example.stackoverflowjavaanalysis.data.dto.DatabaseStatsDTO;
 import org.example.stackoverflowjavaanalysis.data.model.Answer;
 import org.example.stackoverflowjavaanalysis.data.model.Question;
 import org.example.stackoverflowjavaanalysis.data.repository.AnswerRepository;
+import org.example.stackoverflowjavaanalysis.data.repository.CommentRepository;
 import org.example.stackoverflowjavaanalysis.data.repository.QuestionRepository;
+import org.example.stackoverflowjavaanalysis.data.repository.SOUserRepository;
 import org.example.stackoverflowjavaanalysis.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
@@ -18,6 +21,18 @@ public class MainService {
     private QuestionRepository questionRepository;
     @Autowired
     private AnswerRepository answerRepository;
+    @Autowired
+    private CommentRepository commentRepository;
+    @Autowired
+    private SOUserRepository soUserRepository;
+
+    public DatabaseStatsDTO getDatabaseStats() {
+        long questionCount = questionRepository.count();
+        long answerCount = answerRepository.count();
+        long commentCount = commentRepository.count();
+        long userCount = soUserRepository.count();
+        return new DatabaseStatsDTO(questionCount, answerCount, commentCount, userCount);
+    }
 
     public List<QuestionDTO> getTopScoreQuestions(int topN) {
         List<Question> topQuestions = questionRepository.findByOrderByScoreDesc(PageRequest.of(0, topN));

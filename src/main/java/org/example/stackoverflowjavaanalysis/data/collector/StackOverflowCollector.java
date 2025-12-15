@@ -128,7 +128,10 @@ public class StackOverflowCollector {
             boolean hasMore = true;
             String tagParam = (tagged == null || tagged.isBlank()) ? this.tags : tagged;
 
-            System.out.println(String.format("Fetching questions: limit=%d, sort=%s, tags=%s", limit, sort, tagParam));
+            // 新增：设定时间戳 2020-01-01 00:00:00 UTC = 1577836800
+            long fromDate = 1577836800L;
+
+            System.out.println(String.format("Fetching questions: limit=%d, sort=%s, tags=%s, fromDate=%d (2020+)", limit, sort, tagParam, fromDate));
 
             while (collectedIds.size() < limit && hasMore) {
                 int requestPage = page;
@@ -142,6 +145,7 @@ public class StackOverflowCollector {
                 URI questionUri = UriComponentsBuilder.fromUriString(baseUrl + "/questions")
                         .queryParam("page", requestPage)
                         .queryParam("pagesize", pageSizeLocal)
+                        .queryParam("fromdate", fromDate) // 关键修改：添加时间过滤参数
                         .queryParam("order", "desc")
                         .queryParam("sort", sortParam)
                         .queryParam("tagged", tagParam)
@@ -483,5 +487,162 @@ public class StackOverflowCollector {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 核心优化策略：按季度分层采样 (2020-2025)
+     * 每个季度抓取 100 条：20 条 Top Votes (经典/热门) + 80 条 Random (普通/长尾)
+     */
+    public void collectQuarterlyBalancedDataset() {
+        int startYear = 2020;
+        int endYear = 2025;
+        int topNPerQuarter = 20;
+        int randomNPerQuarter = 80;
+
+        System.out.println("Starting Quarterly Balanced Collection (2020-2025)...");
+
+        for (int year = startYear; year <= endYear; year++) {
+            // 每年 4 个季度
+            for (int quarter = 1; quarter <= 4; quarter++) {
+                // 计算当前季度的起止时间戳
+                long fromDate = getQuarterStartEpoch(year, quarter);
+                long toDate = getQuarterEndEpoch(year, quarter);
+                
+                // 如果开始时间超过当前时间，停止抓取 (处理 2025 年未来的季度)
+                if (fromDate > Instant.now().getEpochSecond()) {
+                    break;
+                }
+
+                System.out.println(String.format(">>> Processing %d Q%d (Top: %d, Random: %d)", year, quarter, topNPerQuarter, randomNPerQuarter));
+
+                // 1. 抓取 Top N (按 Votes 排序) - 代表该季度最受关注的问题
+                fetchQuestionsByTimeRange(topNPerQuarter, "votes", "java", fromDate, toDate);
+
+                // 2. 抓取 Random N (按 Creation 排序 + 随机页码) - 代表该季度的普通问题分布
+                // 注意：这里用 creation 排序模拟随机，通过随机页码实现
+                fetchQuestionsByTimeRangeRandomly(randomNPerQuarter, "java", fromDate, toDate);
+
+                // 避免触发 API 速率限制
+                sleep(2000); 
+            }
+        }
+        System.out.println("Quarterly Balanced Collection Finished.");
+    }
+
+    /**
+     * 辅助方法：指定时间范围抓取 (Top N)
+     */
+    private void fetchQuestionsByTimeRange(int limit, String sort, String tagged, long fromDate, long toDate) {
+        // 复用之前的逻辑，但强制使用传入的时间范围
+        fetchQuestionsInternal(limit, sort, tagged, fromDate, toDate, false);
+    }
+
+    /**
+     * 辅助方法：指定时间范围随机抓取 (Random N)
+     * 原理：在时间范围内，随机生成页码请求
+     */
+    private void fetchQuestionsByTimeRangeRandomly(int limit, String tagged, long fromDate, long toDate) {
+        // 使用 "random" 模式，内部会处理随机页码
+        fetchQuestionsInternal(limit, "random", tagged, fromDate, toDate, true);
+    }
+
+    /**
+     * 统一的内部抓取实现
+     */
+    private void fetchQuestionsInternal(int limit, String sort, String tagged, long fromDate, long toDate, boolean isRandomMode) {
+        try {
+            int pageSizeLocal = 100;
+            List<Long> collectedIds = new ArrayList<>();
+            int page = 1;
+            
+            // 如果是随机模式，尝试从前 10 页中随机取，增加随机性
+            if (isRandomMode) {
+                page = new Random().nextInt(10) + 1; 
+            }
+
+            while (collectedIds.size() < limit) {
+                // 构建 URL
+                UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + "/questions")
+                        .queryParam("pagesize", pageSizeLocal)
+                        .queryParam("fromdate", fromDate)
+                        .queryParam("todate", toDate)
+                        .queryParam("order", "desc")
+                        .queryParam("site", "stackoverflow")
+                        .queryParam("key", apiKey)
+                        .queryParam("filter", FILTER_WITH_BODY)
+                        .queryParam("tagged", tagged);
+
+                if (isRandomMode) {
+                    // 随机模式：按创建时间排序，随机页码
+                    builder.queryParam("sort", "creation");
+                    builder.queryParam("page", page); 
+                    // 下一次循环页码随机跳动
+                    page = new Random().nextInt(20) + 1; 
+                } else {
+                    // Top模式：按指定(votes)排序，页码递增
+                    builder.queryParam("sort", sort);
+                    builder.queryParam("page", page);
+                    page++;
+                }
+
+                URI uri = builder.build().toUri();
+                
+                try {
+                    String json = restTemplate.getForObject(uri, String.class);
+                    if (json == null) break;
+                    
+                    JsonNode root = mapper.readTree(json);
+                    JsonNode items = root.path("items");
+                    if (items.isEmpty()) break;
+
+                    for (JsonNode node : items) {
+                        if (collectedIds.size() >= limit) break;
+                        ApiQuestion aq = mapper.treeToValue(node, ApiQuestion.class);
+                        if (aq == null || aq.getQuestionId() == null) continue;
+                        
+                        // 查重：如果数据库已存在，跳过（避免不同策略抓到同一个）
+                        if (questionRepository.existsBySoId(aq.getQuestionId())) continue;
+
+                        saveQuestionFromApi(aq);
+                        collectedIds.add(aq.getQuestionId());
+                    }
+                    
+                    if (!root.path("has_more").asBoolean()) break;
+                    
+                    int backoff = root.path("backoff").asInt(0);
+                    if (backoff > 0) sleep(backoff * 1000L);
+
+                } catch (Exception e) {
+                    System.err.println("Error fetching batch: " + e.getMessage());
+                    break;
+                }
+                
+                sleep(500); // 批次间短暂休眠
+            }
+
+            // 抓取详情
+            if (!collectedIds.isEmpty()) {
+                fetchTopAnswersAndCommentsForQuestions(collectedIds, 3, 5);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // --- 时间计算辅助方法 ---
+
+    private long getQuarterStartEpoch(int year, int quarter) {
+        int startMonth = (quarter - 1) * 3 + 1;
+        return LocalDateTime.of(year, startMonth, 1, 0, 0)
+                .atZone(ZoneId.of("UTC")).toEpochSecond();
+    }
+
+    private long getQuarterEndEpoch(int year, int quarter) {
+        int startMonth = (quarter - 1) * 3 + 1;
+        LocalDateTime start = LocalDateTime.of(year, startMonth, 1, 0, 0);
+        // 加3个月减1秒，即为季度末
+        return start.plusMonths(3).minusSeconds(1)
+                .atZone(ZoneId.of("UTC")).toEpochSecond();
     }
 }

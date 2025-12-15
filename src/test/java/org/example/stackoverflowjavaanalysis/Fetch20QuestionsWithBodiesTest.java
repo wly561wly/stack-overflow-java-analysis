@@ -30,16 +30,19 @@ public class Fetch20QuestionsWithBodiesTest {
 
     @Test
     public void testCollect20QuestionsWithFullBodies() {
-        // 1. 清理数据库，确保测试环境干净
+        // 1. 清理数据库
         commentRepository.deleteAll();
         answerRepository.deleteAll();
         questionRepository.deleteAll();
         soUserRepository.deleteAll();
 
-        System.out.println("Database cleaned. Starting collection...");
+        System.out.println("Database cleaned. Starting Quarterly Balanced Collection...");
 
         try {
-            collector.collectTopQuestionsWithDetails(20);
+            // 调用新的按季度采样方法
+            // 注意：这会抓取大量数据 (5年 * 4季度 * 100条 = 2000条)
+            // 如果只是测试连通性，可以去 StackOverflowCollector 里把年份范围改小一点，或者在这里只运行几秒钟
+            collector.collectQuarterlyBalancedDataset(); 
         } catch (Exception e) {
             System.err.println("Collector execution failed: " + e.getMessage());
             e.printStackTrace();

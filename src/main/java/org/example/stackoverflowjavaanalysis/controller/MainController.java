@@ -19,6 +19,7 @@ public class MainController {
 
     @GetMapping("/")
     public String index(Model model) {
+        model.addAttribute("stats", mainService.getDatabaseStats());
         model.addAttribute("topQuestions", mainService.getTopScoreQuestions(10));
         return "index";
     }

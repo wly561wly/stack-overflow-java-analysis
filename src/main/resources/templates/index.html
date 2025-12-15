@@ -15,11 +15,35 @@
         .btn-warning:hover { background: #e0a800; }
         .btn-danger { background: #dc3545; }
         .btn-danger:hover { background: #c82333; }
+        .stats-container { display: flex; justify-content: space-around; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .stat-item { text-align: center; }
+        .stat-value { font-size: 1.5em; font-weight: bold; color: #007bff; }
+        .stat-label { color: #666; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div class="card">
         <h1>Stack Overflow Java 数据分析</h1>
+        
+        <div class="stats-container">
+            <div class="stat-item">
+                <div class="stat-value" th:text="${stats.questionCount}">0</div>
+                <div class="stat-label">Questions</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" th:text="${stats.answerCount}">0</div>
+                <div class="stat-label">Answers</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" th:text="${stats.commentCount}">0</div>
+                <div class="stat-label">Comments</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" th:text="${stats.userCount}">0</div>
+                <div class="stat-label">Users</div>
+            </div>
+        </div>
+
         <p>请选择分析模块：</p>
         <br>
         <a href="/trend" class="btn">📈 主题趋势分析</a>
