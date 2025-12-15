@@ -166,6 +166,9 @@ public class StackOverflowCollector {
                 }
 
                 for (JsonNode node : items) {
+                    if (collectedIds.size() == 0) {
+                        System.out.println("DEBUG: First question JSON: " + node.toString());
+                    }
                     if (collectedIds.size() >= limit) break;
                     ApiQuestion aq = mapper.treeToValue(node, ApiQuestion.class);
                     if (aq == null || aq.getQuestionId() == null) continue;
@@ -398,6 +401,9 @@ public class StackOverflowCollector {
         q.setViewCount(a.getViewCount());
         q.setLink(a.getLink());
         q.setContentLicense(a.getContentLicense());
+        
+        // 修复：正确保存 API 返回的 comment_count
+        q.setQuestionCommentsNumber(a.getCommentCount() != null ? a.getCommentCount() : 0);
 
         if (a.getCreationDate() != null) {
             q.setCreationDate(LocalDateTime.ofInstant(Instant.ofEpochSecond(a.getCreationDate()), ZoneId.systemDefault()));
@@ -417,8 +423,34 @@ public class StackOverflowCollector {
     }
 
     private void saveTopComments(List<ApiComment> list, int limit, boolean isQuestion) {
-        if (list == null || list.isEmpty()) return;
+        if (list == null || list.isEmpty()) {
+            System.err.println("DEBUG: saveTopComments called with empty list");
+            return;
+        }
+        System.err.println("DEBUG: saveTopComments called with " + list.size() + " comments. isQuestion=" + isQuestion);
+
         list.sort((c1, c2) -> Integer.compare(c2.getScore(), c1.getScore())); // 降序
+
+        // 修复：如果 API 返回的 comment_count 为 0，但实际抓取到了评论，则更新 comment_count
+        if (isQuestion) {
+            Long postId = list.get(0).getPostId();
+            questionRepository.findBySoId(postId).ifPresent(q -> {
+                // 强制更新评论数，以实际抓取到的为准（或者取最大值）
+                int current = q.getQuestionCommentsNumber() == null ? 0 : q.getQuestionCommentsNumber();
+                if (list.size() > current) {
+                    q.setQuestionCommentsNumber(list.size());
+                    questionRepository.save(q);
+                }
+            });
+        }
+
+        // 寻找最早的评论时间 (用于计算等待时间)
+
+        Long firstCommentTime = list.stream()
+                .map(ApiComment::getCreationDate)
+                .filter(Objects::nonNull)
+                .min(Long::compare)
+                .orElse(null);
 
         int count = 0;
         for (ApiComment ac : list) {
@@ -432,11 +464,25 @@ public class StackOverflowCollector {
             c.setPostId(ac.getPostId());
             
             if (isQuestion) {
-                questionRepository.findBySoId(ac.getPostId()).ifPresent(c::setQuestion);
+                Question q = questionRepository.findBySoId(ac.getPostId()).orElse(null);
+                if (q != null) {
+                    c.setQuestion(q);
+                    // 如果这是该问题的第一条评论，计算并保存等待时间
+                    if (firstCommentTime != null && q.getCreationDate() != null) {
+                        long qCreationEpoch = q.getCreationDate().atZone(ZoneId.of("UTC")).toEpochSecond();
+                        long waitSeconds = firstCommentTime - qCreationEpoch;
+                        // 只有当等待时间合理（>=0）时才保存，避免数据异常
+                        if (waitSeconds >= 0) {
+                            q.setFirstCommentWaitTimeSeconds(waitSeconds);
+                            questionRepository.save(q);
+                        }
+                    }
+                }
             } else {
                 // 如果是 Answer 的评论，不关联 Question (或者根据你的实体定义关联 Answer)
                 // 这里保持 Question 为空，避免外键错误
                 c.setQuestion(null); 
+                answerRepository.findBySoId(ac.getPostId()).ifPresent(c::setAnswer);
             }
 
             if (ac.getOwner() != null && ac.getOwner().getUserId() != null) {

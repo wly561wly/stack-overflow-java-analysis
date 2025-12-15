@@ -46,6 +46,9 @@ public class Question {
     // 新增：问题的评论数量统计字段
     private Integer questionCommentsNumber = 0;
 
+    // 新增：第一条评论的等待时间（秒）
+    private Long firstCommentWaitTimeSeconds;
+
     @OneToMany(mappedBy = "question", cascade = CascadeType.REMOVE, orphanRemoval = true)
     private List<Comment> comments;
 
@@ -101,6 +104,9 @@ public class Question {
 
     public Integer getQuestionCommentsNumber() { return questionCommentsNumber; }
     public void setQuestionCommentsNumber(Integer questionCommentsNumber) { this.questionCommentsNumber = questionCommentsNumber; }
+
+    public Long getFirstCommentWaitTimeSeconds() { return firstCommentWaitTimeSeconds; }
+    public void setFirstCommentWaitTimeSeconds(Long firstCommentWaitTimeSeconds) { this.firstCommentWaitTimeSeconds = firstCommentWaitTimeSeconds; }
 
     public List<Comment> getComments() { return comments; }
     public void setComments(List<Comment> comments) { this.comments = comments; }
