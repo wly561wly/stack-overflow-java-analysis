@@ -29,8 +29,7 @@ public class SolvableQuestionService {
     private TopicRepository topicRepository;
 
     // 分类阈值配置
-    private static final int MIN_ANSWERS_FOR_SOLVABLE = 3;
-    private static final int MIN_SCORE_FOR_SOLVABLE = 100;
+    private static final int MIN_ANSWERS_FOR_SOLVABLE = 3; // 高赞答案的赞数阈值 (题目要求: 赞至少3个)
 
     // 内部类：用于统计分类指标
     private static class CategoryStats {
@@ -38,36 +37,61 @@ public class SolvableQuestionService {
         long totalScore = 0;
         long totalViews = 0;
         long totalAnswers = 0;
-        long qualityCount = 0; // 优质内容 (score > 5)
+        long totalReputation = 0;
+        long totalComments = 0;
+        long totalBodyLength = 0;
+        long totalTitleLength = 0;
+        long totalMaxAnswerScore = 0;
+        long totalTagsCount = 0;   
 
         void add(Question q) {
             this.count++;
             this.totalScore += (q.getScore() != null ? q.getScore() : 0);
             this.totalViews += (q.getViewCount() != null ? q.getViewCount() : 0);
             this.totalAnswers += (q.getAnswerCount() != null ? q.getAnswerCount() : 0);
-            if (q.getScore() != null && q.getScore() > 5) {
-                this.qualityCount++;
+            this.totalComments += (q.getQuestionCommentsNumber() != null ? q.getQuestionCommentsNumber() : 0);
+            this.totalBodyLength += (q.getBody() != null ? q.getBody().length() : 0);
+            this.totalTitleLength += (q.getTitle() != null ? q.getTitle().length() : 0);
+            
+            if (q.getOwner() != null && q.getOwner().getReputation() != null) {
+                this.totalReputation += q.getOwner().getReputation();
+            }
+
+            // 计算最高赞答案分数
+            int maxScore = 0;
+            if (q.getAnswers() != null && !q.getAnswers().isEmpty()) {
+                maxScore = q.getAnswers().stream()
+                        .mapToInt(a -> a.getScore() != null ? a.getScore() : 0)
+                        .max().orElse(0);
+            }
+            this.totalMaxAnswerScore += maxScore;
+
+            // 计算标签数量
+            if (q.getTags() != null && !q.getTags().isEmpty()) {
+                // 假设格式为 <tag1><tag2> 或 tag1,tag2
+                String tags = q.getTags();
+                if (tags.contains("<")) {
+                    // 简单统计 '<' 的数量
+                    this.totalTagsCount += tags.chars().filter(ch -> ch == '<').count();
+                } else {
+                    // 逗号分隔
+                    this.totalTagsCount += tags.split(",").length;
+                }
             }
         }
 
-        // 修改为返回保留两位小数的double值
-        double getAvgScore() { 
-            double value = count == 0 ? 0 : (double) totalScore / count;
-            return NumberUtils.roundToTwoDecimalPlaces(value);
-        }
-        
-        double getAvgViews() { 
-            double value = count == 0 ? 0 : (double) totalViews / count;
-            return NumberUtils.roundToTwoDecimalPlaces(value);
-        }
-        
-        double getAvgAnswers() { 
-            double value = count == 0 ? 0 : (double) totalAnswers / count;
-            return NumberUtils.roundToTwoDecimalPlaces(value);
-        }
-        
-        double getQualityRate() { 
-            double value = count == 0 ? 0 : (double) qualityCount / count;
+        double getAvgScore() { return calcAvg(totalScore); }
+        double getAvgViews() { return calcAvg(totalViews); }
+        double getAvgAnswers() { return calcAvg(totalAnswers); }
+        double getAvgReputation() { return calcAvg(totalReputation); }
+        double getAvgComments() { return calcAvg(totalComments); }
+        double getAvgBodyLength() { return calcAvg(totalBodyLength); }
+        double getAvgTitleLength() { return calcAvg(totalTitleLength); }
+        double getAvgMaxAnswerScore() { return calcAvg(totalMaxAnswerScore); }
+        double getAvgTagsCount() { return calcAvg(totalTagsCount); }
+
+        private double calcAvg(long total) {
+            double value = count == 0 ? 0 : (double) total / count;
             return NumberUtils.roundToTwoDecimalPlaces(value);
         }
     }
@@ -138,19 +162,20 @@ public class SolvableQuestionService {
     }
 
     private boolean isSolvable(Question q) {
-        // 判定逻辑：
-        // 1. 有接受答案 (假设 answerCount > 0 且 score > 0 作为简单替代，因为实体可能没 acceptedAnswerId)
-        //    如果有 acceptedAnswerId 字段请替换： if (q.getAcceptedAnswerId() != null) return true;
+        // 1. 有接受的答案
+        if (Boolean.TRUE.equals(q.getHasAcceptedAnswer())) {
+            return true;
+        }
         
-        // 2. 回答数 >= 3 且 点赞 >= 100
-        int answers = q.getAnswerCount() != null ? q.getAnswerCount() : 0;
-        int score = q.getScore() != null ? q.getScore() : 0;
+        // 2. 存在高赞答案（赞至少3个）
+        if (q.getAnswers() != null) {
+            for (var a : q.getAnswers()) {
+                if (a.getScore() != null && a.getScore() >= 3) {
+                    return true;
+                }
+            }
+        }
         
-        if (answers >= MIN_ANSWERS_FOR_SOLVABLE && score >= MIN_SCORE_FOR_SOLVABLE) return true;
-
-        // 简单模拟：如果 score > 5 且 answers > 0 也算比较容易解决的
-        if (score > 5 && answers > 0) return true;
-
         return false;
     }
 
@@ -160,62 +185,91 @@ public class SolvableQuestionService {
                                                SortedSet<String> dates) {
         Map<String, Object> result = new HashMap<>();
 
-        // 1. 饼图 (数量占比)
-        List<Map<String, Object>> pieData = new ArrayList<>();
-        pieData.add(Map.of("name", "Solvable", "value", solvable.count));
-        pieData.add(Map.of("name", "Hard-to-Solve", "value", hard.count));
-        result.put("pieData", pieData);
+        // 1. 详细统计数据 (用于下方卡片展示)
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("solvable", buildStatsMap(solvable));
+        stats.put("hard", buildStatsMap(hard));
+        result.put("stats", stats);
 
-        // 2. 柱状图 (核心指标对比) - 这些值已经通过CategoryStats中的方法进行了格式化
-        result.put("barX", Arrays.asList("Avg Score", "Avg Views", "Avg Answers", "Quality Rate (%)"));
-        result.put("barSolvable", Arrays.asList(
-            solvable.getAvgScore(), 
-            solvable.getAvgViews(), 
-            solvable.getAvgAnswers(), 
-            solvable.getQualityRate() * 100
-        ));
-        result.put("barHard", Arrays.asList(
-            hard.getAvgScore(), 
-            hard.getAvgViews(), 
-            hard.getAvgAnswers(), 
-            hard.getQualityRate() * 100
-        ));
-
-        // 3. 雷达图 (综合维度) - 这些值也会被格式化
+        // 2. 雷达图数据 (归一化展示)
+        // 指标: 声望, 浏览量, 答案数(替换评论数), 点赞数, Body长度, Title长度
         List<Map<String, Object>> radarIndicator = new ArrayList<>();
-        radarIndicator.add(Map.of("name", "Count", "max", Math.max(solvable.count, hard.count) * 1.2));
-        radarIndicator.add(Map.of("name", "Score", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgScore(), hard.getAvgScore()) * 1.2)));
-        radarIndicator.add(Map.of("name", "Views", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgViews(), hard.getAvgViews()) * 1.2)));
-        radarIndicator.add(Map.of("name", "Answers", "max", NumberUtils.roundToTwoDecimalPlaces(Math.max(solvable.getAvgAnswers(), hard.getAvgAnswers()) * 1.2)));
-        radarIndicator.add(Map.of("name", "Quality", "max", 100));
-        result.put("radarIndicator", radarIndicator);
-        
-        result.put("radarSolvable", Arrays.asList(
-            solvable.count, 
-            solvable.getAvgScore(), 
-            solvable.getAvgViews(), 
-            solvable.getAvgAnswers(), 
-            solvable.getQualityRate() * 100
-        ));
-        result.put("radarHard", Arrays.asList(
-            hard.count, 
-            hard.getAvgScore(), 
-            hard.getAvgViews(), 
-            hard.getAvgAnswers(), 
-            hard.getQualityRate() * 100
-        ));
+        List<Double> solvableValues = new ArrayList<>();
+        List<Double> hardValues = new ArrayList<>();
 
-        // 4. 折线图 (趋势) - 这里是整数数据，不需要格式化
-        List<Long> lineSolvable = new ArrayList<>();
-        List<Long> lineHard = new ArrayList<>();
-        for (String d : dates) {
-            lineSolvable.add(solvableSeries.getOrDefault(d, new CategoryStats()).count);
-            lineHard.add(hardSeries.getOrDefault(d, new CategoryStats()).count);
-        }
-        result.put("dates", dates);
-        result.put("lineSolvable", lineSolvable);
-        result.put("lineHard", lineHard);
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Avg Reputation", solvable.getAvgReputation(), hard.getAvgReputation());
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Avg Views", solvable.getAvgViews(), hard.getAvgViews());
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Avg Answers", solvable.getAvgAnswers(), hard.getAvgAnswers());
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Avg Score", solvable.getAvgScore(), hard.getAvgScore());
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Body Length", solvable.getAvgBodyLength(), hard.getAvgBodyLength());
+        addRadarMetric(radarIndicator, solvableValues, hardValues, "Title Length", solvable.getAvgTitleLength(), hard.getAvgTitleLength());
+
+        result.put("radarIndicator", radarIndicator);
+        result.put("radarSolvable", solvableValues);
+        result.put("radarHard", hardValues);
+
+        // 3. 计算差异最大的三个指标
+        List<Map<String, Object>> top3 = calculateTop3Differences(solvable, hard);
+        result.put("top3Differences", top3);
 
         return result;
+    }
+
+    private List<Map<String, Object>> calculateTop3Differences(CategoryStats s, CategoryStats h) {
+        List<Map<String, Object>> diffs = new ArrayList<>();
+        
+        addDiff(diffs, "Avg Reputation", s.getAvgReputation(), h.getAvgReputation());
+        addDiff(diffs, "Avg Views", s.getAvgViews(), h.getAvgViews());
+        addDiff(diffs, "Avg Answers", s.getAvgAnswers(), h.getAvgAnswers());
+        addDiff(diffs, "Avg Comments", s.getAvgComments(), h.getAvgComments());
+        addDiff(diffs, "Avg Score", s.getAvgScore(), h.getAvgScore());
+        addDiff(diffs, "Body Length", s.getAvgBodyLength(), h.getAvgBodyLength());
+        addDiff(diffs, "Title Length", s.getAvgTitleLength(), h.getAvgTitleLength());
+        addDiff(diffs, "Max Answer Score", s.getAvgMaxAnswerScore(), h.getAvgMaxAnswerScore());
+        addDiff(diffs, "Avg Tags", s.getAvgTagsCount(), h.getAvgTagsCount());
+
+        // Sort by diff score descending
+        diffs.sort((a, b) -> Double.compare((Double) b.get("diffScore"), (Double) a.get("diffScore")));
+
+        return diffs.stream().limit(3).collect(Collectors.toList());
+    }
+
+    private void addDiff(List<Map<String, Object>> list, String name, double v1, double v2) {
+        double max = Math.max(v1, v2);
+        double diffScore = 0;
+        if (max > 0) {
+            diffScore = Math.abs(v1 - v2) / max;
+        }
+        Map<String, Object> map = new HashMap<>();
+        map.put("name", name);
+        map.put("solvable", v1);
+        map.put("hard", v2);
+        map.put("diffScore", diffScore);
+        list.add(map);
+    }
+
+    private Map<String, Object> buildStatsMap(CategoryStats s) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("count", s.count);
+        m.put("avgReputation", s.getAvgReputation());
+        m.put("avgViews", s.getAvgViews());
+        m.put("avgComments", s.getAvgComments());
+        m.put("avgAnswers", s.getAvgAnswers());
+        m.put("avgScore", s.getAvgScore());
+        m.put("avgBodyLen", s.getAvgBodyLength());
+        m.put("avgTitleLen", s.getAvgTitleLength());
+        m.put("avgMaxAnswerScore", s.getAvgMaxAnswerScore());
+        m.put("avgTagsCount", s.getAvgTagsCount());
+        return m;
+    }
+
+    private void addRadarMetric(List<Map<String, Object>> indicators, List<Double> v1, List<Double> v2, String name, double val1, double val2) {
+        double max = Math.max(val1, val2);
+        if (max == 0) max = 1;
+        max = max * 1.2; // 留出20%余量
+
+        indicators.add(Map.of("name", name, "max", max));
+        v1.add(val1);
+        v2.add(val2);
     }
 }

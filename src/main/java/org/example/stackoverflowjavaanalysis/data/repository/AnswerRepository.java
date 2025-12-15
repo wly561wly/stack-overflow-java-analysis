@@ -8,9 +8,13 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 
+import java.util.Optional;
+
 @Repository
 public interface AnswerRepository extends JpaRepository<Answer, Long> {
     boolean existsBySoId(Long soId);
+
+    Optional<Answer> findBySoId(Long soId);
 
     // 新增：查询某问题的Top N回答
     List<Answer> findByQuestionSoIdOrderByScoreDesc(Long questionSoId, Pageable pageable);
