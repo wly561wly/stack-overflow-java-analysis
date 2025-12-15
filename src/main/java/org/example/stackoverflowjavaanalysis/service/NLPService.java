@@ -14,7 +14,8 @@ public class NLPService {
     private static final Logger logger = LoggerFactory.getLogger(NLPService.class);
 
     // 正则表达式模式
-    private static final Pattern EXCEPTION_PATTERN = Pattern.compile("([a-zA-Z\\.]+Exception|Error):[\\s\\S]*?\\n\\n|\\Z");
+    private static final Pattern EXCEPTION_PATTERN = Pattern.compile("\\b([a-zA-Z]+Exception|Error):[^\\n]*");
+
     private static final Pattern CODE_PATTERN = Pattern.compile("<code>([\\s\\S]*?)</code>");
     private static final Pattern THREAD_SAFE_PATTERN = Pattern.compile("(synchroniz|volatile|thread.*?safe|atomic|lock)");
     private static final Pattern DEADLOCK_PATTERN = Pattern.compile("(deadlock|dead-lock|hang|stuck|circular.*?wait)");
