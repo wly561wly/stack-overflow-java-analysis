@@ -1,5 +1,6 @@
 package org.example.stackoverflowjavaanalysis.service;
 
+import org.example.stackoverflowjavaanalysis.data.model.Answer;
 import org.example.stackoverflowjavaanalysis.data.model.Question;
 import org.example.stackoverflowjavaanalysis.data.repository.QuestionRepository;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ public class MultithreadingPitfallService {
     private QuestionRepository questionRepository;
 
     @Autowired
-    private NLPService nlpService;
+    private ContextAnalysis contextAnalysis;
 
     // 陷阱类型定义与关键词绑定
     private static final Map<String, List<String>> PITFALL_DEFINITIONS = new LinkedHashMap<>();
@@ -35,7 +36,7 @@ public class MultithreadingPitfallService {
         PITFALL_DEFINITIONS.put("Memory Visibility", Arrays.asList("visibility", "volatile", "memory model", "jmm"));
         PITFALL_DEFINITIONS.put("Performance", Arrays.asList("performance", "slow", "overhead", "context switch", "throughput"));
         PITFALL_DEFINITIONS.put("Thread Pool", Arrays.asList("thread pool", "executor", "pool size", "queue full", "rejected"));
-        PITFALL_DEFINITIONS.put("Exception Handling", Arrays.asList("exception", "uncaught", "interrupted", "swallow"));
+        PITFALL_DEFINITIONS.put("Exception Handling", Arrays.asList("uncaught", "interrupted", "swallow"));
     }
 
     // 内部类：用于统计陷阱指标
@@ -104,7 +105,15 @@ public class MultithreadingPitfallService {
                                               List<String> customWords) {
         return getPitfallData(startDateStr, endDateStr, selectedPitfalls, customWords, "count");
     }
-
+    private Set<Question> queryQuestions(List<String> keywords, LocalDateTime start, LocalDateTime end) {
+        Set<Question> result = new HashSet<>();
+        for (String kw : keywords) {
+            result.addAll(questionRepository.findByTagsContainingAndCreationDateBetween(kw, start, end));
+            result.addAll(questionRepository.findByTitleContainingAndCreationDateBetween(kw, start, end));
+            result.addAll(questionRepository.findByBodyContainingAndCreationDateBetween(kw, start, end));
+        }
+        return result;
+    }
     public Map<String, Object> getPitfallData(String startDateStr,
                                               String endDateStr,
                                               List<String> selectedPitfalls,
@@ -115,11 +124,10 @@ public class MultithreadingPitfallService {
         LocalDate endDate = LocalDate.parse(endDateStr);
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
-
+        List<String> keywords = Arrays.asList("thread,concurrency,deadlock,race-condition,volatile,synchronized,atomic,locks,executor,threadpool".split(","));
         List<Question> questions = new ArrayList<>();
-        questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("multithreading", startDateTime, endDateTime));
-        questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("concurrency", startDateTime, endDateTime));
-        questions.addAll(questionRepository.findByTagsContainingAndCreationDateBetween("thread", startDateTime, endDateTime));
+        questions.addAll(queryQuestions(keywords, startDateTime, endDateTime));
+
 
         questions = questions.stream().distinct().collect(Collectors.toList());
 
@@ -143,30 +151,79 @@ public class MultithreadingPitfallService {
         for (Question q : questions) {
             String title = q.getTitle().toLowerCase();
             String bodyHtml = q.getBody() != null ? q.getBody() : "";
-            String bodyText = nlpService.extractTextFromHtml(bodyHtml).toLowerCase();
+            String bodyText = contextAnalysis.extractTextFromHtml(bodyHtml).toLowerCase();
             String fullText = title + " " + bodyText;
             String dateKey = q.getCreationDate().format(monthFmt);
             dates.add(dateKey);
 
-            List<String> exceptions = nlpService.extractExceptions(bodyHtml);
-            List<String> codeSnippets = nlpService.extractCodeSnippets(bodyHtml);
+            List<String> exceptions = contextAnalysis.extractExceptions(bodyHtml);
+            List<String> codeSnippets = contextAnalysis.extractCodeSnippets(bodyHtml);
 
             // 使用NLP服务识别陷阱，但不传入自定义关键词
-            Set<String> identifiedPitfalls = nlpService.identifyMultithreadingPitfalls(fullText, null);
+            Set<String> identifiedPitfalls = contextAnalysis.identifyMultithreadingPitfalls(fullText, null);
 
             // 结合代码片段分析
             for (String code : codeSnippets) {
-                Map<String, Boolean> codeIssues = nlpService.analyzeCodeForMultithreadingIssues(code);
+                Map<String, Boolean> codeIssues = contextAnalysis.analyzeCodeForMultithreadingIssues(code);
+                // 1. Thread Safety (线程安全手段)
+                // 只要出现了同步、锁、原子类，就说明这段代码涉及线程安全处理
                 if (codeIssues.getOrDefault("containsSynchronization", false) ||
-                        codeIssues.getOrDefault("containsVolatile", false)) {
+                        codeIssues.getOrDefault("containsVolatile", false) ||
+                        codeIssues.getOrDefault("containsAtomic", false) ||
+                        codeIssues.getOrDefault("containsLocks", false)) {
                     identifiedPitfalls.add("Thread Safety");
                 }
+
+                // 2. Thread Pool (线程池使用)
                 if (codeIssues.getOrDefault("containsThreadPools", false)) {
                     identifiedPitfalls.add("Thread Pool");
                 }
+
+                // 3. Thread Coordination (线程协作)
+                // 包括 wait/notify, CountDownLatch, CyclicBarrier 等
+                if (codeIssues.getOrDefault("containsWaitNotify", false)) {
+                    identifiedPitfalls.add("Thread Coordination");
+                }
+
+                // 4. Deadlock Risk (死锁风险)
+                // 主要是显式锁的使用，或者嵌套同步（虽然正则很难检测嵌套，但我们标记为风险）
+                if (codeIssues.getOrDefault("containsDeadlockPatterns", false)) {
+                    identifiedPitfalls.add("Deadlock"); // 建议改为 Risk，因为只是检测到了锁
+                }
+
+                // 5. Race Condition Risk (竞态条件风险)
+                // 只有当检测到“线程上下文”+“不安全集合”时才触发
+                if (codeIssues.getOrDefault("containsRaceConditionPatterns", false)) {
+                    identifiedPitfalls.add("Race Condition");
+                }
+
+                // 6. Memory Visibility (内存可见性)
+                // 如果代码特意使用了 volatile，通常意味着开发者在关注可见性问题
+                if (codeIssues.getOrDefault("containsMemoryVisibilityPatterns", false)) {
+                    identifiedPitfalls.add("Memory Visibility");
+                }
+
+                // 7. Performance Issues (性能隐患)
+                // 主要是 Thread.sleep
+                if (codeIssues.getOrDefault("containsPerformancePatterns", false)) {
+                    identifiedPitfalls.add("Performance");
+                }
+
+                // 8. Exception Handling (异常处理)
+                // 涉及 InterruptedException
+                if (codeIssues.getOrDefault("containsExceptionHandlingPatterns", false)) {
+                    identifiedPitfalls.add("Exception Handling");
+                }
+            }
+            if (q.getAnswers() != null && !q.getAnswers().isEmpty()) {
+                for (Answer answer : q.getAnswers()) {
+                    String answerBodyText = contextAnalysis.extractTextFromHtml(answer.getBody());
+                    Set<String> answerTopics = contextAnalysis.analyzeAnswerForSolutions(answerBodyText);
+
+                    identifiedPitfalls.addAll(answerTopics);
+                }
             }
 
-            // 应用自定义匹配词（只在这里处理一次）
             if (customWords != null && !customWords.isEmpty()) {
                 for (String customEntry : customWords) {
                     try {
