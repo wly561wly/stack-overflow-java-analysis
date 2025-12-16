@@ -46,6 +46,7 @@
         #radarControls {
             text-align: center;
             margin-bottom: 10px;
+            display: none; /* 默认隐藏 */
         }
 
         #baseDataIndicator {
@@ -202,9 +203,20 @@
         document.getElementById('generalControls').style.display = mode === 'general' ? 'flex' : 'none';
         document.getElementById('specificControls').style.display = mode === 'specific' ? 'flex' : 'none';
 
+        // 控制雷达图控制按钮的显示/隐藏
+        document.getElementById('radarControls').style.display = mode === 'specific' ? 'block' : 'none';
+
         // 清空所有图表
         heatmapChart.clear();
         barChart.clear();
+
+        // 额外清除雷达图相关的数据和状态
+        if (mode === 'general') {
+            // 切换到总体模式时，清除雷达图相关的数据
+            baseRadarData = null;
+            currentRadarData = null;
+            document.getElementById('baseDataIndicator').style.display = 'none';
+        }
 
         // 根据模式调整图表显示
         if (mode === 'general') {
@@ -226,7 +238,6 @@
             clearBaseData();
         }
     }
-
     // 设置Top N选择框的变化监听
     function setupTopNListener() {
         const topNSelect = document.getElementById('specificTopN');
@@ -745,8 +756,7 @@
 
         const option = {
             title: {
-                text: `共现五维分析对比`,
-                subtext: `基底: ${baseData.mainTopic} 与 ${baseData.relatedTopic} | 对比: ${currentData.mainTopic} 与 ${currentData.relatedTopic}`,
+                text: `基底: ${baseData.mainTopic} 与 ${baseData.relatedTopic} | 对比: ${currentData.mainTopic} 与 ${currentData.relatedTopic}`,
                 left: 'center'
             },
             legend: {
@@ -800,16 +810,21 @@
     }
 
     // 清除基底数据
+    // 清除基底数据
     function clearBaseData() {
         baseRadarData = null;
+        currentRadarData = null;  // 同时清除当前数据
         document.getElementById('baseDataIndicator').style.display = 'none';
 
-        // 重新渲染当前数据（如果存在）
-        if (currentRadarData) {
-            renderRadarChart(currentRadarData);
+        // 清除雷达图显示
+        barChart.clear();
+
+        // 重新渲染当前数据（如果存在且在特定模式下）
+        if (currentMode === 'specific' && lastValidTopicId) {
+            // 重新加载当前话题的数据
+            loadSpecificTopicDataWithId(lastValidTopicId);
         }
     }
-
     window.addEventListener('resize', () => {
         if (heatmapChart) heatmapChart.resize();
         if (barChart) barChart.resize();
