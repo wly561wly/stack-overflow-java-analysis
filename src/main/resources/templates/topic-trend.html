@@ -6,36 +6,36 @@
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f4f6f9; }
-        
+
         .container { max-width: 1400px; margin: 0 auto; }
         .content-wrapper { display: flex; gap: 20px; }
 
-        .header { 
-            background: white; 
-            padding: 15px 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
-            margin-bottom: 20px; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
+        .header {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .sidebar { width: 350px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: fit-content; }
         .main-content { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        
+
         .topic-item { border-bottom: 1px solid #eee; padding: 8px 0; }
         .topic-header { display: flex; align-items: center; justify-content: space-between; }
         .keywords-panel { margin-left: 20px; margin-top: 5px; display: none; padding: 5px; background: #f8f9fa; border-radius: 4px; }
         .keyword-tag { display: inline-block; margin: 2px 5px; font-size: 0.9em; }
-        
+
         .controls-row { display: flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee; }
         .control-group { display: flex; flex-direction: column; gap: 5px; }
         .control-group label { font-weight: bold; font-size: 0.9em; color: #555; }
-        
+
         button.btn-primary { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
         button.btn-sm { padding: 2px 6px; font-size: 0.8em; border: 1px solid #ddd; background: white; cursor: pointer; }
-        
+
         #chartContainer { width: 100%; height: 500px; }
         .pie-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .pie-chart { height: 300px; }
@@ -79,7 +79,7 @@
                 <button class="btn-sm" onclick="toggleAllKeywords(true)">展开所有关键词</button>
                 <button class="btn-sm" onclick="toggleAllKeywords(false)">收起所有关键词</button>
             </div>
-            
+
             <div id="topicList">
                 <div th:each="topic : ${topics}" class="topic-item">
                     <div class="topic-header">
@@ -91,7 +91,7 @@
                     </div>
                     <div class="keywords-panel">
                         <div style="margin-bottom: 5px; font-size: 0.8em;">
-                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> / 
+                            <a href="javascript:void(0)" onclick="batchSelectKeywords(this, true)">全选</a> /
                             <a href="javascript:void(0)" onclick="batchSelectKeywords(this, false)">全不选</a>
                         </div>
                         <div th:each="kw : ${topic.relatedKeywords != null ? #strings.arraySplit(topic.relatedKeywords, ',') : {}}">
@@ -115,7 +115,7 @@
                         <label><input type="checkbox" id="scope_fulltext" checked> 全文</label>
                     </div>
                 </div>
-                
+
                 <div class="control-group">
                     <label>图表类型</label>
                     <select id="chartType">
@@ -154,7 +154,7 @@
             </div>
 
             <div id="chartContainer"></div>
-            
+
             <div id="legendTableContainer" class="legend-table-container">
                 <h4>图表显示控制</h4>
                 <table class="legend-table" id="legendTable">
@@ -169,7 +169,7 @@
 
 <script>
     // --- 交互逻辑 ---
-    
+
     // 1. Topic 全选/全不选
     function toggleAllTopics(select) {
         document.querySelectorAll('.topic-cb').forEach(cb => {
@@ -251,7 +251,7 @@
     let pieCharts = [];
     // 全局变量存储用户在表格中的勾选状态： key = seriesName, value = boolean
     // 放在这里确保不会被 queryData 重置
-    let legendState = {}; 
+    let legendState = {};
 
     function queryData() {
         // 收集参数：包括被勾选和处于半选(indeterminate)的 Topic
@@ -270,7 +270,7 @@
         // 使用 Set 去重收集所有被选中的关键词
         const selectedKws = new Set();
         document.querySelectorAll('.kw-cb:checked').forEach(cb => selectedKws.add(cb.value));
-        
+
         const scopes = [];
         if(document.getElementById('scope_tag').checked) scopes.push('tag');
         if(document.getElementById('scope_title').checked) scopes.push('title');
@@ -302,13 +302,13 @@
         fetch('/trend/data', { method: 'POST', body: formData })
             .then(res => res.json())
             .then(data => {
-                    mainChart.hideLoading();
-                    if (data.error) {
-                        alert(data.error);
-                    } else {
-                        renderCharts(data, chartType, topicNames, mode);
-                    }
-                })
+                mainChart.hideLoading();
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    renderCharts(data, chartType, topicNames, mode);
+                }
+            })
             .catch(err => {
                 mainChart.hideLoading();
                 console.error(err);
@@ -320,7 +320,7 @@
         const pieContainer = document.getElementById('pieContainer');
         const lineContainer = document.getElementById('chartContainer');
         const legendTableContainer = document.getElementById('legendTableContainer');
-        
+
         pieContainer.innerHTML = '';
         pieCharts.forEach(c => c.dispose());
         pieCharts = [];
@@ -329,10 +329,10 @@
             lineContainer.style.display = 'none';
             legendTableContainer.style.display = 'none';
             pieContainer.style.display = 'grid';
-            
+
             const metrics = ['questionCount', 'viewCount', 'answerCount', 'score'];
             const titles = ['问题数', '浏览数', '回答数', '点赞数'];
-            
+
             metrics.forEach((m, idx) => {
                 const div = document.createElement('div');
                 div.className = 'pie-chart';
@@ -363,12 +363,12 @@
             // compare/integrate 模式返回 series (原始数据)
             // fixedMetric 模式返回 fixedMetricSeries
             let sourceData = data.series || data.fixedMetricSeries || data.originalSeries || {};
-            
-            // 如果是 compare 模式，进行前端归一化
-            if (mode === 'compare') {
+
+            // 如果是 compare 或 integrate 模式，进行前端归一化
+            if (mode === 'compare' || mode === 'integrate') {
                 // 1. 计算全局极值
                 let allCounts = [], allScores = [], allViews = [], allAnswers = [];
-                
+
                 for (let key in sourceData) {
                     if (key.endsWith('_count')) allCounts.push(...sourceData[key]);
                     if (key.endsWith('_score')) allScores.push(...sourceData[key]);
@@ -406,9 +406,6 @@
                     }
                 }
                 // 使用归一化数据绘图，但保留 sourceData 用于 tooltip
-                // 注意：这里我们把 sourceData 存到 originalData 变量里供 tooltip 使用
-                // 而把 normalizedData 赋值给 sourceData 供绘图循环使用
-                // 但为了逻辑清晰，我们新建一个 plotData
                 var plotData = normalizedData;
             } else {
                 var plotData = sourceData;
@@ -437,7 +434,7 @@
                 legendSelected[name] = legendState[name];
             });
 
-            // 自定义tooltip formatter，显示原始数值
+            // 自定义tooltip formatter，显示原始数值和归一化值
             const tooltipFormatter = (params) => {
                 if (!params || params.length === 0) return '';
 
@@ -455,7 +452,10 @@
                         originalValue = originalData[originalSeriesName][param.dataIndex];
                     }
 
-                    tooltipContent += `${param.marker} ${param.seriesName}: ${originalValue}<br/>`;
+                    // 获取归一化后的数值（用于显示当前点的相对位置）
+                    let normalizedValue = param.value;
+
+                    tooltipContent += `${param.marker} ${param.seriesName}: ${originalValue} (${normalizedValue.toFixed(3)})<br/>`
                 });
 
                 return tooltipContent;
@@ -474,7 +474,10 @@
                 },
                 grid: { top: 30, bottom: 30, left: 50, right: 50 },
                 xAxis: { type: 'category', data: data.dates },
-                yAxis: { type: 'value' },
+                yAxis: {
+                    type: 'value',
+                    name: (mode === 'compare' || mode === 'integrate') ? '归一化值 (0-1)' : '原始数值'
+                },
                 series: series
             }, true); // true = clear old
 
@@ -517,12 +520,14 @@
         // 表体
         displayTopics.forEach(topic => {
             const isIntegrateRow = (mode === 'integrate' && topic === 'ALL');
-            const displayName = isIntegrateRow ? '整合数据 (All Selected)' : topic;
-            
+            const displayName = isIntegrateRow
+                ? `整合数据 (All Selected)`
+                : topic;
+
             const tr = document.createElement('tr');
-            
+
             // 如果是整合模式，行头禁用且默认选中
-            const rowCheckboxHtml = isIntegrateRow 
+            const rowCheckboxHtml = isIntegrateRow
                 ? `<input type="checkbox" class="row-select" data-topic="${topic}" checked disabled>`
                 : `<input type="checkbox" class="row-select" data-topic="${topic}" checked onchange="toggleRow(this)">`;
 
@@ -533,14 +538,14 @@
                         ${displayName}
                     </label>
                 </td>`;
-            
+
             metrics.forEach(m => {
                 // 匹配后端返回的 Series Name
                 let matchedName = null;
                 for (let sName of availableSeriesNames) {
                     // 模糊匹配：包含 Topic 名
                     if (sName.toLowerCase().indexOf(topic.toLowerCase()) === -1) continue;
-                    
+
                     // 且包含 Metric 关键字
                     let isMetricMatch = false;
                     for(let matchKey of m.match) {
@@ -549,7 +554,7 @@
                             break;
                         }
                     }
-                    
+
                     if (isMetricMatch) {
                         matchedName = sName;
                         break;
@@ -565,9 +570,9 @@
 
                     tr.innerHTML += `
                         <td>
-                            <input type="checkbox" class="legend-cb" 
-                                   data-topic="${topic}" data-metric="${m.key}" data-name="${matchedName}" 
-                                   ${isChecked ? 'checked' : ''} 
+                            <input type="checkbox" class="legend-cb"
+                                   data-topic="${topic}" data-metric="${m.key}" data-name="${matchedName}"
+                                   ${isChecked ? 'checked' : ''}
                                    onchange="toggleSeries(this)">
                         </td>`;
                 } else {
@@ -591,7 +596,7 @@
     function toggleSeries(cb) {
         const name = cb.getAttribute('data-name');
         const isChecked = cb.checked;
-        
+
         // 更新全局状态
         legendState[name] = isChecked;
 
