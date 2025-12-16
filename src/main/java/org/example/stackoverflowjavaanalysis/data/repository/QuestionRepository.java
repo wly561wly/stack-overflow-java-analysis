@@ -20,6 +20,8 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     // 这里使用 Pageable 更通用
     List<Question> findByOrderByScoreDesc(Pageable pageable);
 
+    List<Question> findByCreationDateBetween(LocalDateTime start, LocalDateTime end);
+
     // 按标签查询
     List<Question> findByTagsContainingAndCreationDateBetween(String tag, LocalDateTime start, LocalDateTime end);
 

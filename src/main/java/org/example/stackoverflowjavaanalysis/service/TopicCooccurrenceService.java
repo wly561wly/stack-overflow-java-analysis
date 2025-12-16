@@ -55,53 +55,54 @@ public class TopicCooccurrenceService {
     public Map<String, Object> getCooccurrenceData(String startDateStr,
                                                    String endDateStr,
                                                    int topN,
-                                                   String metric) { // metric: count, heat
+                                                   String metric) {
 
         LocalDate startDate = LocalDate.parse(startDateStr);
         LocalDate endDate = LocalDate.parse(endDateStr);
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        // 1. 获取所有 Topic 和 时间范围内的问题
+        // 1. 数据库时间范围查询 (保持高效)
+        List<Question> questions = questionRepository.findByCreationDateBetween(startDateTime, endDateTime);
         List<Topic> allTopics = topicRepository.findAll();
-        // 这里为了简化，查询所有问题并在内存过滤，或者你可以扩展 Repository 按时间查所有
-        // 假设 Repository 有 findAllByCreationDateBetween，如果没有，可以用 findAll 过滤
-        List<Question> questions = questionRepository.findAll().stream()
-                .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
-                .collect(Collectors.toList());
 
-        logger.info("Cooccurrence analysis: start={}, end={}, topN={}, metric={}, questions={}, topics={}", startDateStr, endDateStr, topN, metric, questions.size(), allTopics.size());
+        logger.info("Cooccurrence analysis (Fast Mode): start={}, end={}, questions={}, topics={}",
+                startDateStr, endDateStr, questions.size(), allTopics.size());
 
-        // 2. 预处理 Topic 关键词，加速匹配
+        // 2. 预处理 Topic 关键词 (转小写，方便后续快速匹配)
         Map<Long, List<String>> topicKeywords = new HashMap<>();
         for (Topic t : allTopics) {
             List<String> kws = new ArrayList<>();
-            kws.add(t.getName()); // Tag
+            kws.add(t.getName().toLowerCase()); // 主名称
             if (t.getRelatedKeywords() != null && !t.getRelatedKeywords().isBlank()) {
-                kws.addAll(Arrays.asList(t.getRelatedKeywords().split(",")));
+                Arrays.stream(t.getRelatedKeywords().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(String::toLowerCase)
+                        .forEach(kws::add);
             }
-            topicKeywords.put(t.getId(), kws.stream().map(String::trim).collect(Collectors.toList()));
+            topicKeywords.put(t.getId(), kws);
         }
 
-        // 3. 遍历问题，生成共现对
-        // Map Key: "TopicIdA-TopicIdB" (IdA < IdB), Value: Stats
+        // 3. 遍历问题，计算共现
         Map<String, CooccurrenceStats> pairStatsMap = new HashMap<>();
-        // 记录每个 Topic 出现的次数，用于热力图轴排序
         Map<Long, Integer> topicOccurrence = new HashMap<>();
 
         for (Question q : questions) {
-            // 3.1 识别该问题包含哪些 Topic
-            List<Long> matchedTopicIds = new ArrayList<>();
-            String title = q.getTitle().toLowerCase();
+            // 预处理当前问题的 Tags 和 Title (只做一次)
             String tags = q.getTags() != null ? q.getTags().toLowerCase() : "";
-            String body = q.getBody() != null ? q.getBody().toLowerCase() : "";
+            String title = q.getTitle() != null ? q.getTitle().toLowerCase() : "";
 
+            List<Long> matchedTopicIds = new ArrayList<>();
+
+            // 简单循环匹配：检查 Tag 或 Title 是否包含关键词
+            // 这种方式比正则快 10-100 倍，且不需要解析 Body
             for (Topic t : allTopics) {
+                List<String> kws = topicKeywords.get(t.getId());
                 boolean isMatch = false;
-                // 简单匹配逻辑：Tag 包含 OR 标题包含关键词
-                for (String kw : topicKeywords.get(t.getId())) {
-                    String kwLower = kw.toLowerCase();
-                    if (tags.contains(kwLower) || title.contains(kwLower)) {
+                for (String kw : kws) {
+                    // 核心匹配逻辑：Tags 包含 OR Title 包含
+                    if (tags.contains(kw) || title.contains(kw)) {
                         isMatch = true;
                         break;
                     }
@@ -112,9 +113,10 @@ public class TopicCooccurrenceService {
                 }
             }
 
-            // 3.2 生成两两组合
+            // 3.1 生成两两组合 (Pair Generation)
             if (matchedTopicIds.size() < 2) continue;
-            Collections.sort(matchedTopicIds); // 排序确保字典序
+
+            Collections.sort(matchedTopicIds); // 排序
 
             for (int i = 0; i < matchedTopicIds.size(); i++) {
                 for (int j = i + 1; j < matchedTopicIds.size(); j++) {
@@ -127,7 +129,7 @@ public class TopicCooccurrenceService {
             }
         }
 
-        // 4. 构建图表数据
+        // 4. 构建图表数据 (逻辑不变)
         return buildChartData(pairStatsMap, allTopics, topicOccurrence, topN, metric);
     }
 
@@ -141,15 +143,13 @@ public class TopicCooccurrenceService {
         LocalDateTime startDateTime = startDate.atStartOfDay();
         LocalDateTime endDateTime = endDate.atTime(LocalTime.MAX);
 
-        // 1. 获取所有 Topic 和 时间范围内的问题
+        // 1. 数据库时间范围查询
+        List<Question> questions = questionRepository.findByCreationDateBetween(startDateTime, endDateTime);
         List<Topic> allTopics = topicRepository.findAll();
-        List<Question> questions = questionRepository.findAll().stream()
-                .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
-                .collect(Collectors.toList());
 
-        logger.info("Specific topic cooccurrence analysis: questions={}, topics={}, specificTopicId={}", questions.size(), allTopics.size(), specificTopicId);
+        logger.info("Specific topic analysis (Fast Mode): questions={}, topics={}, specificTopicId={}",
+                questions.size(), allTopics.size(), specificTopicId);
 
-        // 如果没有指定话题，则返回空数据
         if (specificTopicId == null) {
             Map<String, Object> result = new HashMap<>();
             result.put("barX", new ArrayList<>());
@@ -158,18 +158,6 @@ public class TopicCooccurrenceService {
             return result;
         }
 
-        // 2. 预处理 Topic 关键词，加速匹配
-        Map<Long, List<String>> topicKeywords = new HashMap<>();
-        for (Topic t : allTopics) {
-            List<String> kws = new ArrayList<>();
-            kws.add(t.getName()); // Tag
-            if (t.getRelatedKeywords() != null && !t.getRelatedKeywords().isBlank()) {
-                kws.addAll(Arrays.asList(t.getRelatedKeywords().split(",")));
-            }
-            topicKeywords.put(t.getId(), kws.stream().map(String::trim).collect(Collectors.toList()));
-        }
-
-        // 3. 找到指定话题
         Optional<Topic> specificTopicOpt = allTopics.stream()
                 .filter(t -> t.getId().equals(specificTopicId))
                 .findFirst();
@@ -181,22 +169,36 @@ public class TopicCooccurrenceService {
         Topic specificTopic = specificTopicOpt.get();
         String specificTopicName = specificTopic.getName();
 
-        // 4. 遍历问题，统计指定话题与其他话题的共现情况
+        // 2. 预处理 Topic 关键词
+        Map<Long, List<String>> topicKeywords = new HashMap<>();
+        for (Topic t : allTopics) {
+            List<String> kws = new ArrayList<>();
+            kws.add(t.getName().toLowerCase());
+            if (t.getRelatedKeywords() != null && !t.getRelatedKeywords().isBlank()) {
+                Arrays.stream(t.getRelatedKeywords().split(","))
+                        .map(String::trim)
+                        .filter(s -> !s.isEmpty())
+                        .map(String::toLowerCase)
+                        .forEach(kws::add);
+            }
+            topicKeywords.put(t.getId(), kws);
+        }
+
+        // 3. 遍历问题
         Map<Long, CooccurrenceStats> specificTopicCooccurrence = new HashMap<>();
 
         for (Question q : questions) {
-            // 4.1 识别该问题包含哪些 Topic
-            List<Long> matchedTopicIds = new ArrayList<>();
-            String title = q.getTitle().toLowerCase();
             String tags = q.getTags() != null ? q.getTags().toLowerCase() : "";
-            String body = q.getBody() != null ? q.getBody().toLowerCase() : "";
+            String title = q.getTitle() != null ? q.getTitle().toLowerCase() : "";
 
+            List<Long> matchedTopicIds = new ArrayList<>();
+
+            // 快速匹配逻辑
             for (Topic t : allTopics) {
+                List<String> kws = topicKeywords.get(t.getId());
                 boolean isMatch = false;
-                // 简单匹配逻辑：Tag 包含 OR 标题包含关键词
-                for (String kw : topicKeywords.get(t.getId())) {
-                    String kwLower = kw.toLowerCase();
-                    if (tags.contains(kwLower) || title.contains(kwLower)) {
+                for (String kw : kws) {
+                    if (tags.contains(kw) || title.contains(kw)) {
                         isMatch = true;
                         break;
                     }
@@ -206,9 +208,8 @@ public class TopicCooccurrenceService {
                 }
             }
 
-            // 4.2 如果问题包含指定话题，并且至少还有另一个话题
+            // 4. 核心过滤：必须包含指定话题，且有其他共现话题
             if (matchedTopicIds.contains(specificTopicId) && matchedTopicIds.size() > 1) {
-                // 统计与指定话题共现的其他话题
                 for (Long topicId : matchedTopicIds) {
                     if (!topicId.equals(specificTopicId)) {
                         specificTopicCooccurrence.computeIfAbsent(topicId, k -> new CooccurrenceStats()).add(q);
@@ -217,7 +218,7 @@ public class TopicCooccurrenceService {
             }
         }
 
-        // 5. 构建图表数据
+        // 5. 构建图表数据 (逻辑不变)
         return buildSpecificTopicChartData(specificTopicCooccurrence, allTopics, topN, metric, specificTopicName);
     }
 
