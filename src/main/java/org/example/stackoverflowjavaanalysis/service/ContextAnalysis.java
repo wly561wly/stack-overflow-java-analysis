@@ -20,51 +20,29 @@ public class ContextAnalysis {
     private static final Pattern THREAD_SAFE_PATTERN = Pattern.compile(
             "\\b(thread[\\s-]?safe(ty)?|synchroniz(ed|ation)|atomic(ity)?|concurrent[\\s-]?modification|not[\\s-]?thread[\\s-]?safe|unsafe)\\b",
             Pattern.CASE_INSENSITIVE);
-
-    // ==========================================
-    // 2. Deadlock (死锁)
     // 匹配：deadlock, hang, stuck, circular wait, starvation
-    // ==========================================
     private static final Pattern DEADLOCK_PATTERN = Pattern.compile(
             "\\b(dead[\\s-]?lock|hang(s|ing|ed)?|stuck|circular[\\s-]?wait|starvation|live[\\s-]?lock)\\b",
             Pattern.CASE_INSENSITIVE);
-
-    // ==========================================
-    // 3. Race Condition (竞态条件)
     // 匹配：race condition, data race, inconsistent state, check-then-act
-    // ==========================================
     private static final Pattern RACE_CONDITION_PATTERN = Pattern.compile(
             "\\b(race[\\s-]?condition|data[\\s-]?race|inconsistent[\\s-]?state|check[\\s-]?then[\\s-]?act|atomicity[\\s-]?failure)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    // ==========================================
-    // 4. Memory Visibility (内存可见性)
     // 匹配：visibility, volatile, memory model, happens-before, stale data
-    // ==========================================
     private static final Pattern MEMORY_VISIBILITY_PATTERN = Pattern.compile(
             "\\b(visibility|memory[\\s-]?model|jmm|happens[\\s-]?before|volatile|stale[\\s-]?data|barrier|fence)\\b",
             Pattern.CASE_INSENSITIVE);
-
-    // ==========================================
-    // 5. Thread Pool (线程池)
     // 匹配：thread pool, executor, queue full, rejected execution
-    // ==========================================
     private static final Pattern THREAD_POOL_PATTERN = Pattern.compile(
             "\\b(thread[\\s-]?pool|executor|worker[\\s-]?thread|pool[\\s-]?size|queue[\\s-]?full|rejected[\\s-]?execution)\\b",
             Pattern.CASE_INSENSITIVE);
-
-    // ==========================================
-    // 6. Performance (性能问题)
     // 匹配：latency, throughput, context switch, overhead, busy wait, bottleneck
-    // ==========================================
     private static final Pattern PERFORMANCE_PATTERN = Pattern.compile(
             "\\b(latency|throughput|context[\\s-]?switch|overhead|bottle[\\s-]?neck|busy[\\s-]?wait|spin[\\s-]?lock|cpu[\\s-]?bound)\\b",
             Pattern.CASE_INSENSITIVE);
 
-    // ==========================================
-    // 7. Exception Handling (异常处理)
     // 匹配：interrupted, swallow exception, uncaught, ignore exception
-    // ==========================================
     private static final Pattern EXCEPTION_HANDLING_PATTERN = Pattern.compile(
             "\\b(interrupted|uncaught|swallow(ed|ing)?[\\s-]?exception|ignore(d|ing)?[\\s-]?exception|future[\\.]?get)\\b",
             Pattern.CASE_INSENSITIVE);
@@ -76,14 +54,10 @@ public class ContextAnalysis {
     private static final Pattern PERFORMANCE_ANSWER = Pattern.compile("\\b(performance|throughput|latency|context[\\s-]?switch|busy[\\s-]?wait|lock[\\s-]?free|wait[\\s-]?free)\\b", Pattern.CASE_INSENSITIVE);
     private static final Pattern EXCEPTION_HANDLING_ANSWER = Pattern.compile("\\b(exception|interrupted|restore[\\s-]?interrupt|uncaught[\\s-]?exception|completablefuture)\\b", Pattern.CASE_INSENSITIVE);
 
-    /**
-     * 新增方法：分析回答文本，返回对应的陷阱/领域类型
-     */
     public Set<String> analyzeAnswerForSolutions(String answerText) {
         Set<String> topics = new HashSet<>();
         if (answerText == null || answerText.isEmpty()) return topics;
 
-        // 注意：这里的字符串必须与 MultithreadingPitfallService 中的 PITFALL_DEFINITIONS 的 Key 保持一致
         if (DEADLOCK_ANSWER.matcher(answerText).find()) topics.add("Deadlock");
         if (RACE_CONDITION_ANSWER.matcher(answerText).find()) topics.add("Race Condition");
         if (THREAD_SAFE_ANSWER.matcher(answerText).find()) topics.add("Thread Safety");
@@ -146,8 +120,6 @@ public class ContextAnalysis {
             return issues;
         }
 
-        // 移除注释（简单版，防止注释干扰检测）
-        // 注意：这只是一个简单的正则，处理复杂嵌套注释可能不完美，但在简单场景够用
         String cleanCode = code.replaceAll("//.*|/\\*[\\s\\S]*?\\*/", " ");
 
         // 1. 基础同步机制（检测是否使用了多线程工具）
@@ -157,16 +129,13 @@ public class ContextAnalysis {
         issues.put("usesExplicitLocks", check(cleanCode, "ReentrantLock", "ReentrantReadWriteLock", "StampedLock", "\\.lock\\(", "\\.tryLock\\("));
         issues.put("usesThreadPools", check(cleanCode, "ExecutorService", "ThreadPoolExecutor", "Executors\\.new", "ForkJoinPool", "CompletableFuture"));
 
-        // 2. 线程协作模式
         issues.put("usesWaitNotify", check(cleanCode, "\\.wait\\(", "\\.notify\\(", "\\.notifyAll\\("));
         issues.put("usesCondition", check(cleanCode, "Condition", "\\.await\\(", "\\.signal\\("));
         issues.put("usesBarriers", check(cleanCode, "CountDownLatch", "CyclicBarrier", "Semaphore", "Phaser"));
 
-        // 3. 潜在风险模式 (Risk Detection)
         issues.put("riskManualLocking", check(cleanCode, "Lock", "\\.lock\\("));
 
         // 风险：使用了非线程安全的集合 (在多线程上下文中这很危险，但单看代码很难确定上下文)
-        // 这里的逻辑是：如果代码里出现了线程池或锁，同时又出现了 HashMap，则标记为警告
         boolean hasThreadingContext = issues.get("usesThreadPools") || issues.get("usesExplicitLocks") || issues.get("usesSynchronization");
         issues.put("riskUnsafeCollectionsInThreadContext",
                 hasThreadingContext && check(cleanCode, "HashMap", "ArrayList", "SimpleDateFormat", "StringBuilder"));
@@ -174,7 +143,6 @@ public class ContextAnalysis {
         // 风险：Thread.sleep 通常是不推荐的生产代码写法（应用 CountDownLatch 等替代）
         issues.put("riskThreadSleep", check(cleanCode, "Thread\\.sleep", "TimeUnit\\.[A-Z]+\\.sleep"));
 
-        // 风险：捕获了 InterruptedException 但可能吞掉了异常 (忽略不处理)
         // 正则逻辑：catch 括号里有 InterruptedException
         issues.put("catchesInterruptedException", check(cleanCode, "catch\\s*\\(.*InterruptedException"));
 
@@ -188,12 +156,11 @@ public class ContextAnalysis {
         for (String pattern : patterns) {
             // \b 表示单词边界，防止部分匹配
             // Pattern.CASE_INSENSITIVE 让匹配不区分大小写
-            // 如果 pattern 本身包含符号（如 . 或 ( ），则假设调用者已经处理好转义，或者我们不使用 \b 包裹非单词字符
             String regex;
             if (pattern.contains("\\")) {
-                regex = pattern; // 调用者负责正则写法
+                regex = pattern;
             } else {
-                regex = "\\b" + pattern + "\\b"; // 自动加边界
+                regex = "\\b" + pattern + "\\b";
             }
 
             if (Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(code).find()) {

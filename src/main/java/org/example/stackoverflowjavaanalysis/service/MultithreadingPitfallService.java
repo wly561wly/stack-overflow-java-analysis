@@ -7,7 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.example.stackoverflowjavaanalysis.util.NumberUtils; // 导入工具类
+import org.example.stackoverflowjavaanalysis.util.NumberUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -162,10 +162,8 @@ public class MultithreadingPitfallService {
             // 使用NLP服务识别陷阱，但不传入自定义关键词
             Set<String> identifiedPitfalls = contextAnalysis.identifyMultithreadingPitfalls(fullText, null);
 
-            // 结合代码片段分析
             for (String code : codeSnippets) {
                 Map<String, Boolean> codeIssues = contextAnalysis.analyzeCodeForMultithreadingIssues(code);
-                // 1. Thread Safety (线程安全手段)
                 // 只要出现了同步、锁、原子类，就说明这段代码涉及线程安全处理
                 if (codeIssues.getOrDefault("containsSynchronization", false) ||
                         codeIssues.getOrDefault("containsVolatile", false) ||
@@ -174,42 +172,30 @@ public class MultithreadingPitfallService {
                     identifiedPitfalls.add("Thread Safety");
                 }
 
-                // 2. Thread Pool (线程池使用)
                 if (codeIssues.getOrDefault("containsThreadPools", false)) {
                     identifiedPitfalls.add("Thread Pool");
                 }
-
-                // 3. Thread Coordination (线程协作)
                 // 包括 wait/notify, CountDownLatch, CyclicBarrier 等
                 if (codeIssues.getOrDefault("containsWaitNotify", false)) {
                     identifiedPitfalls.add("Thread Coordination");
                 }
-
-                // 4. Deadlock Risk (死锁风险)
-                // 主要是显式锁的使用，或者嵌套同步（虽然正则很难检测嵌套，但我们标记为风险）
+                // 主要是显式锁的使用，或者嵌套同步
                 if (codeIssues.getOrDefault("containsDeadlockPatterns", false)) {
                     identifiedPitfalls.add("Deadlock"); // 建议改为 Risk，因为只是检测到了锁
                 }
-
-                // 5. Race Condition Risk (竞态条件风险)
                 // 只有当检测到“线程上下文”+“不安全集合”时才触发
                 if (codeIssues.getOrDefault("containsRaceConditionPatterns", false)) {
                     identifiedPitfalls.add("Race Condition");
                 }
-
-                // 6. Memory Visibility (内存可见性)
                 // 如果代码特意使用了 volatile，通常意味着开发者在关注可见性问题
                 if (codeIssues.getOrDefault("containsMemoryVisibilityPatterns", false)) {
                     identifiedPitfalls.add("Memory Visibility");
                 }
-
-                // 7. Performance Issues (性能隐患)
                 // 主要是 Thread.sleep
                 if (codeIssues.getOrDefault("containsPerformancePatterns", false)) {
                     identifiedPitfalls.add("Performance");
                 }
 
-                // 8. Exception Handling (异常处理)
                 // 涉及 InterruptedException
                 if (codeIssues.getOrDefault("containsExceptionHandlingPatterns", false)) {
                     identifiedPitfalls.add("Exception Handling");
@@ -254,7 +240,7 @@ public class MultithreadingPitfallService {
                 }
             }
 
-            // 传统的关键词匹配作为补充（保留原有逻辑）
+            // 传统的关键词匹配作为补充
             for (Map.Entry<String, List<String>> entry : PITFALL_DEFINITIONS.entrySet()) {
                 String pitfallType = entry.getKey();
                 if (!totalStats.containsKey(pitfallType)) continue;
@@ -361,7 +347,7 @@ public class MultithreadingPitfallService {
                         values.add(NumberUtils.roundToTwoDecimalPlaces(s.getCodeRate() * 100));
                         break;
                     default:
-                        values.add(s.count); // 默认显示问题数量
+                        values.add(s.count);
                 }
             }
 
@@ -370,7 +356,7 @@ public class MultithreadingPitfallService {
 
         result.put("dates", dates);
         result.put("lineSeries", lineSeries);
-        result.put("lineChartAttribute", lineChartAttribute); // 返回当前选择的属性，用于前端显示
+        result.put("lineChartAttribute", lineChartAttribute);
 
         result.put("allPitfalls", PITFALL_DEFINITIONS.keySet());
 

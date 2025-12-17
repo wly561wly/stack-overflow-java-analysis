@@ -18,7 +18,6 @@ public class TopicService {
     @Transactional
     public void initDefaultTopics() {
         // 格式: {name, description, keywords}
-        // 这里是你优化后的列表，确保子内容不重复
         String[][] defaultTopics = {
             {"java", "Java core and language features", "jdk,language,syntax,generics,annotations"},
             {"concurrency", "Concurrency and multithreading", "thread,concurrency,deadlock,race-condition,volatile,synchronized,atomic,locks,executor,threadpool"},
@@ -35,7 +34,6 @@ public class TopicService {
         // 1. 收集当前代码中定义的所有 Topic 名称
         Set<String> validTopicNames = new HashSet<>();
 
-        // 2. 更新或创建定义的 Topic
         for (String[] topicArr : defaultTopics) {
             String name = topicArr[0];
             String desc = topicArr[1];
@@ -50,12 +48,9 @@ public class TopicService {
             topicRepository.save(topic);
         }
 
-        // 3. 【新增】清理数据库中存在、但不再 defaultTopics 列表中的旧 Topic
-        // 这样可以确保页面只显示代码里配置的那 10 个主题
         List<Topic> allTopics = topicRepository.findAll();
         for (Topic t : allTopics) {
             if (!validTopicNames.contains(t.getName())) {
-                // 比如旧的 "lambda" 主题，名字不在 validTopicNames 里，就会被删掉
                 topicRepository.delete(t);
             }
         }

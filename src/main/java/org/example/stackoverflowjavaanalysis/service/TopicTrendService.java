@@ -81,7 +81,7 @@ public class TopicTrendService {
             List<String> effectiveList = new ArrayList<>(effective);
             topicEffectiveKeywords.put(t.getId(), effectiveList);
 
-            // 用 effectiveList 去查询并统计（示例）
+            // 用 effectiveList 去查询并统计
             // Set<Question> questions = queryQuestions(effectiveList, scopes, start, end);
             // logger.debug("Topic [{}] effectiveKeywords={} => questionsFound={}", t.getName(), effectiveList, questions.size());
         }
@@ -98,7 +98,6 @@ public class TopicTrendService {
             if ("pie".equalsIgnoreCase(chartType)) {
                 return buildPieData(Map.of("ALL", allQuestions));
             } else {
-                // 传递 granularity
                 return buildTimeSeriesDataWithNormalization(Map.of("ALL", allQuestions), chartType, granularity);
             }
 
@@ -120,11 +119,9 @@ public class TopicTrendService {
             if ("pie".equalsIgnoreCase(chartType)) {
                 return buildPieData(topicQuestionsMap);
             } else {
-                // 传递 granularity
                 return buildTimeSeriesDataWithFixedMetric(topicQuestionsMap, chartType, fixedMetric, granularity);
             }
         } else {
-            // 对比模式：每个 Topic 独立统计
             Map<String, Set<Question>> topicQuestionsMap = new LinkedHashMap<>();
             for (Topic t : topics) {
                 List<String> kws = topicEffectiveKeywords.get(t.getId());

@@ -108,7 +108,6 @@ public class SolvableQuestionService {
         // 1. 获取问题数据
         List<Question> questions;
         if (topicId != null) {
-            // 如果选了主题，先查主题关键词，再查问题
             Topic topic = topicRepository.findById(topicId).orElse(null);
             if (topic != null) {
                 List<String> kws = new ArrayList<>();
@@ -116,7 +115,7 @@ public class SolvableQuestionService {
                 if (topic.getRelatedKeywords() != null) {
                     kws.addAll(Arrays.asList(topic.getRelatedKeywords().split(",")));
                 }
-                // 简化逻辑：取并集
+                // 取并集
                 Set<Question> qSet = new HashSet<>();
                 for (String kw : kws) {
                     qSet.addAll(questionRepository.findByTagsContainingAndCreationDateBetween(kw.trim(), startDateTime, endDateTime));
@@ -126,7 +125,7 @@ public class SolvableQuestionService {
                 questions = new ArrayList<>();
             }
         } else {
-            // 全量查询 (实际生产中应分页或限制数量)
+            // 全量查询
             questions = questionRepository.findAll().stream()
                     .filter(q -> !q.getCreationDate().isBefore(startDateTime) && !q.getCreationDate().isAfter(endDateTime))
                     .collect(Collectors.toList());
@@ -134,7 +133,6 @@ public class SolvableQuestionService {
 
         logger.info("Solvable analysis: total questions={}", questions.size());
 
-        // 2. 分类统计
         CategoryStats solvableStats = new CategoryStats();
         CategoryStats hardStats = new CategoryStats();
         

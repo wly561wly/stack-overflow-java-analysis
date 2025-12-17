@@ -255,7 +255,6 @@ public class TopicCooccurrenceService {
         result.put("barY", barY);
 
         // --- 2. 热力图 (Matrix) ---
-        // 筛选出活跃的 Topic (Top 20 活跃 Topic，避免矩阵过大)
         List<Long> activeTopicIds = topicOccurrence.entrySet().stream()
                 .sorted((e1, e2) -> e2.getValue().compareTo(e1.getValue()))
                 .limit(20)
@@ -471,9 +470,8 @@ public class TopicCooccurrenceService {
 
     // 辅助方法：对单个值进行最小-最大归一化
     private double normalizeValue(double value, double min, double max) {
-        // 防止除以零
         if (max == min) {
-            return 0.5; // 如果所有值都相同，返回中间值
+            return 0.5;
         }
         // 应用最小-最大归一化：(x - min) / (max - min)
         return (value - min) / (max - min);

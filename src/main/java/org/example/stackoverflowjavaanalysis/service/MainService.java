@@ -48,8 +48,8 @@ public class MainService {
                             question.getSoId(),
                             truncatedTitle,
                             truncatedBody,
-                            question.getTitle(), // 完整标题
-                            question.getBody(),  // 完整内容
+                            question.getTitle(),
+                            question.getBody(),
                             question.getScore() == null ? 0 : question.getScore(),
                             question.getAnswerCount() == null ? 0 : question.getAnswerCount(),
                             question.getHasAcceptedAnswer() != null && question.getHasAcceptedAnswer(),
