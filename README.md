@@ -1,5 +1,7 @@
 # Stack Overflow Java Analysis System
 
+Sustech cs209A Computer_System_DesignAnd_Application Project
+
 A Spring Boot application for analyzing Java trends, topic co-occurrence, and common pitfalls using Stack Overflow data.
 
 ## 🛠 Prerequisites
